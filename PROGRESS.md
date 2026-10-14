@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 01:50 — M0 complete, committing.
+Heartbeat (UTC): 2026-10-14 02:05 — M1 committed (f0ec55f). Starting M2 (media blocks).
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)
