@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 06:35 — M6 core in. Ask My Notes + Daily Recap on Home, AI sheet in Editor (tidy/summarize/grammar/title+tags w/ snapshot undo), LLM Dump&Sort w/ heuristic fallback. 113 tests. Finishing M6 UIs then M7.
+Heartbeat (UTC): 2026-10-14 07:45 — M6 fully committed (Ask/Recap/Loose Ends/Link Essence/Snap+OCR, live test in androidTest). M7a onboarding done (3 pages, skip/done, settings gate, start-destination wiring). 115 tests. Building M7b backup/export next.
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)

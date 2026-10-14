@@ -75,6 +75,9 @@ interface NoteDao {
     @Query("DELETE FROM notes WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
     suspend fun purgeExpiredTrash(cutoff: Long)
 
+    @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
+    suspend fun allNotes(): List<NoteEntity>
+
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY updatedAt DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<NoteEntity>>
 

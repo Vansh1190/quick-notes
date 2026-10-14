@@ -16,6 +16,7 @@ object Routes {
     const val HOME = "home"
     const val LISTS = "lists"
     const val SETTINGS = "settings"
+    const val ONBOARDING = "onboarding"
     const val LIST_DETAIL = "list/{listId}"
     const val EDITOR = "editor/{noteId}?mode={mode}"
 
@@ -30,6 +31,7 @@ object Routes {
 @Composable
 fun QuickNotesNavHost(
     shareRouter: ShareRouter,
+    onboardingPending: Boolean = false,
     startAtNoteId: String? = null,
     startInCaptureMode: String? = null,
     startAtLists: Boolean = false,
@@ -61,7 +63,7 @@ fun QuickNotesNavHost(
             }
         }
     }
-    NavHost(navController = navController, startDestination = Routes.HOME) {
+    NavHost(navController = navController, startDestination = if (onboardingPending) Routes.ONBOARDING else Routes.HOME) {
         composable(Routes.HOME) {
             val recording = com.vansh.quicknotes.ui.voice.RememberRecordingController(noteId = null)
             HomeScreen(

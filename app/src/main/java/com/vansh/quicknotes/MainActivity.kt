@@ -15,6 +15,7 @@ import com.vansh.quicknotes.domain.ShareRouter
 import com.vansh.quicknotes.ui.QuickNotesNavHost
 import com.vansh.quicknotes.ui.design.QuickNotesTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,10 +25,13 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var shareRouter: ShareRouter
     @Inject lateinit var shareHandler: ShareHandler
     @Inject lateinit var recoveryRunner: com.vansh.quicknotes.domain.voice.RecordingRecoveryRunner
+    @Inject lateinit var settings: com.vansh.quicknotes.data.settings.SettingsRepository
 
     private val pendingOpenNote = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    private val pendingOpenListsFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private val onboardingPending = kotlinx.coroutines.flow.MutableStateFlow(false)
     private val pendingCaptureMode = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-    private var pendingOpenLists = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,15 +40,21 @@ class MainActivity : ComponentActivity() {
         routeExtras(intent)
         handleIntent(intent)
         ShortcutPublisher.publish(this)
+        lifecycleScope.launch {
+            onboardingPending.value = settings.settings.first().onboardingDone != true
+        }
         setContent {
             QuickNotesTheme {
                 QuickNotesNavHost(
                     shareRouter = shareRouter,
+                    onboardingPending = onboardingPending.collectAsState().value,
                     startAtNoteId = pendingOpenNote.collectAsState().value,
                     startInCaptureMode = pendingCaptureMode.collectAsState().value,
+                    startAtLists = pendingOpenListsFlow.collectAsState().value,
                     onLaunched = {
                         pendingOpenNote.value = null
                         pendingCaptureMode.value = null
+                        pendingOpenListsFlow.value = false
                     },
                 )
             }
@@ -63,7 +73,7 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         intent.getStringExtra("open_note_id")?.let { pendingOpenNote.value = it }
         intent.getStringExtra(EXTRA_CAPTURE_MODE)?.let { pendingCaptureMode.value = it }
-        if (intent.getBooleanExtra(EXTRA_OPEN_LISTS, false)) pendingOpenLists = true
+        if (intent.getBooleanExtra(EXTRA_OPEN_LISTS, false)) pendingOpenListsFlow.value = true
     }
 
     private fun handleIntent(intent: Intent?) {
