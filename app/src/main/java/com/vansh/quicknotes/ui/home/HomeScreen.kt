@@ -1,0 +1,198 @@
+package com.vansh.quicknotes.ui.home
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vansh.quicknotes.data.local.NoteEntity
+import com.vansh.quicknotes.ui.design.LocalQNPalette
+import com.vansh.quicknotes.ui.design.QNShapes
+import com.vansh.quicknotes.ui.design.QNType
+import com.vansh.quicknotes.ui.design.qnPressable
+import java.text.DateFormat
+import java.util.Date
+import kotlin.math.absoluteValue
+
+@Composable
+fun HomeScreen(
+    onOpenNote: (String) -> Unit,
+    onNewNote: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val palette = LocalQNPalette.current
+    var searchExpanded = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize().background(palette.background).testTag("home_root")) {
+        LazyColumn(
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxSize().testTag("home_list"),
+        ) {
+            item {
+                Column(Modifier.padding(top = 30.dp)) {
+                    Text("Notes", style = QNType.largeTitle, color = palette.textPrimary, modifier = Modifier.testTag("home_title"))
+                    Spacer(Modifier.height(12.dp))
+                    SearchField(
+                        query = state.query,
+                        onQueryChange = viewModel::onQueryChange,
+                        expanded = searchExpanded.value,
+                        onExpand = { searchExpanded.value = true },
+                    )
+                }
+            }
+            if (state.searching) {
+                items(state.results, key = { "res_" + it.id }) { note ->
+                    NoteCard(note, onClick = { onOpenNote(note.id) })
+                }
+            } else {
+                if (state.pinned.isNotEmpty()) {
+                    item {
+                        Column {
+                            Text("Pinned", style = QNType.captionTinted, color = palette.textTertiary)
+                            Spacer(Modifier.height(8.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(state.pinned, key = { "pin_" + it.id }) { note ->
+                                    Box(Modifier.width(150.dp)) {
+                                        NoteCard(note, onClick = { onOpenNote(note.id) }, pinnedStyle = true)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                items(state.notes.filterNot { it.pinned }, key = { it.id }) { note ->
+                    NoteCard(note, onClick = { onOpenNote(note.id) })
+                }
+                if (state.notes.isEmpty()) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(top = 60.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("No notes yet", style = QNType.title, color = palette.textSecondary)
+                            Spacer(Modifier.height(6.dp))
+                            Text("Tap + to capture your first thought", style = QNType.body, color = palette.textTertiary)
+                        }
+                    }
+                }
+            }
+        }
+
+        CapturePill(
+            onNewNote = onNewNote,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 26.dp),
+        )
+    }
+}
+
+@Composable
+private fun SearchField(query: String, onQueryChange: (String) -> Unit, expanded: Boolean, onExpand: () -> Unit) {
+    val palette = LocalQNPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(QNShapes.field)
+            .background(palette.card)
+            .qnPressable(enabled = !expanded) { onExpand() }
+            .padding(horizontal = 16.dp, vertical = 13.dp)
+            .testTag("home_search"),
+    ) {
+        Text("Search", style = QNType.body, color = palette.textTertiary)
+        if (expanded) {
+            Spacer(Modifier.width(10.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                textStyle = QNType.body.copy(color = palette.textPrimary),
+                singleLine = true,
+                modifier = Modifier.testTag("home_search_input"),
+            )
+        }
+    }
+}
+
+@Composable
+fun NoteCard(note: NoteEntity, onClick: () -> Unit, pinnedStyle: Boolean = false) {
+    val palette = LocalQNPalette.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(QNShapes.card)
+            .background(if (pinnedStyle) palette.accent.copy(alpha = 0.14f) else palette.card)
+            .qnPressable(onClick = onClick)
+            .padding(18.dp)
+            .testTag("note_card_${note.id}"),
+    ) {
+        Text(
+            note.title.ifBlank { "Untitled note" },
+            style = QNType.headline,
+            color = palette.textPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (note.pinned) {
+                Text("Pinned", style = QNType.captionTinted, color = palette.accent)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                DateFormat.getDateInstance(DateFormat.SHORT).format(Date(note.updatedAt)),
+                style = QNType.caption,
+                color = palette.textTertiary,
+            )
+        }
+    }
+}
+
+@Composable
+fun CapturePill(onNewNote: () -> Unit, modifier: Modifier = Modifier) {
+    val palette = LocalQNPalette.current
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .clip(QNShapes.pill)
+            .background(palette.card)
+            .padding(horizontal = 24.dp, vertical = 15.dp)
+            .testTag("home_capture_pill"),
+    ) {
+        listOf("Mic", "Camera", "Draw", "Link", "List").forEach { label ->
+            Text(label, style = QNType.headline, color = palette.accent, modifier = Modifier.qnPressable {}.testTag("pill_$label"))
+        }
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(QNShapes.pill)
+                .background(palette.accent)
+                .qnPressable(onClick = onNewNote),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("+", style = QNType.title, color = palette.onAccent, modifier = Modifier.testTag("home_new_note"))
+        }
+    }
+}

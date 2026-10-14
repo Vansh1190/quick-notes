@@ -10,19 +10,20 @@ Heartbeat (UTC): 2026-10-14 01:50 — M0 complete, committing.
 - [x] DECISIONS.md written + spec updated to match
 
 ## Done
-- **Toolchain:** OpenJDK 17, Android SDK (platform-tools, platforms;android-36 + 37.0, build-tools 35/36/37), Gradle 9.8.1 wrapper, 4 GB swap file (machine was thrashing without it), 4 Inter TTF weights bundled.
-- **Stack pinned (see DECISIONS D6-D8):** AGP 9.4.1, Kotlin 2.3.21 + Compose plugin, KSP 2.3.12, Hilt 2.60.1, Compose BOM 2026.09.00 (requires compileSdk 37 / AGP 9.1+), Room 2.7.2. compileSdk 37, targetSdk 36, minSdk 26.
-- **M0 design system:** continuous-corner QNSquircleShape (pure-Kotlin, k=0.72447), color tokens (spec hexes), Inter type scale (34/22/17/13 + support styles), QNMotion spring specs (damping 0.8, reduced→fade), press-scale 0.97 modifier (no ripples), frosted surface (RenderEffect 31+ / solid fallback), demo screen (collapsing large title, inset cards, capture pill) wired into MainActivity behind QuickNotesTheme.
-- **Tests green:** 10 unit/Robolectric tests (squircle geometry, clamp, outline type, tokens, motion, demo-screen compose test) + screenshot evidence in docs/evidence/m0-design-demo.png. `:app:assembleDebug` produces app-debug.apk (14 MB).
-- Remote push BLOCKED: GitHub token lacks repo-create scope (403). Vansh must create Vansh1190/quick-notes, then agent pushes. Not a blocker for building.
+- **Phase 0 + M0** (see git log cc1b9a2).
+- **M1 Notes core:** Room 2.7.2 entities (notes, blocks, tags, note_tags, media_assets) + real FTS5 virtual table created via DB callback, accessed through @RawQuery SearchDao (`Fts5SearchIndex`); `NoteSearchIndex` interface with `FakeNoteSearchIndex` for JVM tests (Robolectric SQLite lacks the fts5 module — real FTS5 gets androidTest on-device). NotesRepository: create/save (title from first line, debounce coalescing), FTS across text+transcripts+link titles with operator-safe query quoting, pin/archive/trash/restore, 30-day purge + orphan-index cleanup. AutoSave class (500 ms debounce, flush on pause/stop/onCleared via its own scope). HomeScreen (large title, expanding search, pinned row, note cards, capture pill) + EditorScreen (block list, capture bar, keyboard-up on open) + Compose Navigation (home ↔ editor). Hilt wiring done; MainActivity now hosts the real nav graph (demo screen kept for design review/tests).
+- **Tests: 27 green** — new: 8 repository/FTS/behavior, 3 AutoSave (virtual time), 3 M1 Compose flows (create→home→search→empty state), 2 evidence screenshots (m1-home.png, m1-editor.png in docs/evidence). Room tests use inline executors to avoid flow-dispatch races (lesson logged below).
+- **Lint:** clean (0 errors) after: FocusRequester() wrapped in remember ×2; suppressed test-only ViewModelConstructorInComposable.
+- **Gate:** lint + unit tests + assembleDebug all green; APK rebuilt.
 
 ## In progress
-- (starting M1) Room entities/DAO + note list/editor.
+- (starting M2) Media blocks: CameraX capture, gallery pick, drawing canvas, link cards, share target.
 
 ## Blocked / notes
 - No emulator here (no KVM): runtime-only behaviors → MANUAL_TESTS.md for Vansh's phone.
-- 3.8 GB RAM + 4 GB swap: builds run with org.gradle.workers.max=1, capped heaps; never run two heavy jobs at once (caused the earlier unresponsiveness).
-- Model is a reasoning model (returns reasoning_content + content): AI response parser must trim.
+- 3.8 GB RAM + 4 GB swap: builds run with org.gradle.workers.max=1, capped heaps; never two heavy jobs at once.
+- Reasoning model returns reasoning_content — AI parser must trim (M6).
+- **Test-infra lessons:** (1) Robolectric SQLite has no fts5 → abstract search behind interface. (2) Room Flow queries dispatch on a background executor → set inline query/transaction executors in tests or use idleFor settling; plain waitForIdle races the flow. (3) AGP 9: kotlin-android plugin removed, M3 Shapes() wants CornerBasedShape (our QNShapes objects are used directly), Color.value can be 0 in JVM tests (assert components).
 
 ## Next
-- M1: entities (Note/Block/... + FTS5), repositories, note list, editor w/ autosave, pin/archive/trash.
+- M2: media store (app-private files), CameraX capture + keep-shooting, gallery pick, drawing canvas (vector strokes + preview render), link card fetcher, share-target activity.

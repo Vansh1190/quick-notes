@@ -55,6 +55,12 @@ android {
             isIncludeAndroidResources = true
         }
     }
+
+    lint {
+        // tests deliberately construct ViewModels inline in setContent (no Hilt activity host)
+        disable += "ViewModelConstructorInComposable"
+        warningsAsErrors = false
+    }
 }
 
 ksp {
