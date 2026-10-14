@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 03:55 — M3 committed. 74 unit tests, lint 0 errors, APK builds. Starting M4 (widgets/QS tile/shortcuts).
+Heartbeat (UTC): 2026-10-14 06:15 — M5 committed (54ab210). 101 unit tests, lint 0 errors, APK builds. Starting M6 (AI features).
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)
@@ -40,5 +40,21 @@ Heartbeat (UTC): 2026-10-14 03:55 — M3 committed. 74 unit tests, lint 0 errors
 - Lint: MissingPermission on AudioRecord/notify fixed with explicit checkPermission + SecurityException catch.
 - Evidence: docs/evidence/m3-recording-sheet.png.
 
+## Done (M4 Quick access)
+- 3 Glance widgets: NewNoteWidget (2x2 tap-anywhere), QuickButtonsWidget (4x1, 5 capture buttons), LargeWidget (4x2 buttons + 3 recent notes, tap→editor). Provider XMLs + manifest receivers.
+- CaptureModes single source of truth: widgets/tile/shortcuts → QuickCaptureActivity (forwarder) → MainActivity extras (StateFlow-routed) → nav autoMode (voice auto-starts sheet; camera/draw overlays; list→Lists). WidgetRefresher notify pattern via broadcast.
+- QS tile NewNoteTileService (tap=quick capture; API 34 PendingIntent path). Dynamic shortcuts: New note/Voice note/Scan/New list.
+- MainActivity.openNoteIntent + EXTRA_CAPTURE_MODE/EXTRA_OPEN_LISTS routing (onNewIntent too).
+- Tests: QuickCaptureActivity forward, WidgetProviderTest manifest/intent contract.
+
+## Done (M5 Lists)
+- Room v2 additive migration: todo_lists + todo_items (dueAt, parentId, orderIndex).
+- ListsRepository: CRUD, progress aggregation, due→AlarmReminderScheduler (exact w/ window fallback), done/remove cancels, purgeDone, title match. BootReceiver re-arms after reboot; ReminderReceiver notification→Lists.
+- Lists screen: progress-ring cards, quick-add, Dump & Sort entry card, mic. "New list" shortcut routes here.
+- List detail: check w/ haptic, long-press drag reorder, swipe delete, quick-add, due toggle (tomorrow 9am/clear), ring header.
+- Dump & Sort v1: DumpAndSortSplitter heuristic (EN/HI/Hinglish) + DatePhraseParser ("kal shaam 5 baje" etc.) → editable preview → commit. Nothing persisted before Done. M6 swaps in LLM behind same preview contract.
+- Tests 101 total (DatePhrase 6, Splitter 4, ListsRepo 7, M5 flow 4). Evidence docs/evidence/m5-lists.png.
+- Robolectric lesson: Dialog-internal weight() click targets have zero bounds in JVM harness → click real widgets where possible, drive VM otherwise; device check in MANUAL_TESTS #23-32.
+
 ## Next
-- M4: Glance home-screen widget (1x1 new-note, 4x2 recent), Quick Settings tile, App shortcuts (long-press), Quick Capture lock-screen activity.
+- M6: AI settings + test button, AiClient (OpenAI-compat), features 1-8 via same preview→confirm contract, WorkManager queue, undo (≥10 s) + version history for AI edits.
