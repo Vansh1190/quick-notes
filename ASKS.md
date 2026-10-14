@@ -44,3 +44,22 @@ Plan → treat Live Updates (promoted ongoing notifications, `Notification.Progr
 4. **Daily Recap / Loose Ends digest**: promoted, tappable evening card.
 5. **Upcoming-reminder glance**: next due task chip (only while a reminder countdown is legitimately running).
 All promotion requests fail soft to a normal ongoing notification; nothing depends on the system granting promotion.
+
+## P2 — push blocked at GitHub, not locally (final)
+
+Repo `Vansh1190/quick-notes` is public and exists, but every token I have (4 distinct PATs,
+all authenticating as `Vansh1190` on api.github.com) is rejected by the git endpoint:
+`git-upload-pack`/`git-receive-pack` → 401, HTTPS push → `Permission to
+Vansh1190/quick-notes.git denied to Vansh1190`. Owner-owned public repo + valid owner token +
+still denied is GitHub's token-class restriction, not a repo/permission setting I can flip:
+fine-grained PATs are refused git access where the account enforces 2FA unless the token was
+elected through 2FA at creation.
+
+**One-line fix:** create a **classic** PAT with scope `repo` (approve the 2FA prompt when
+generating), paste it, and I'll push all 20 commits immediately.
+
+Alternative (no token at all): `git push` from the local clone at
+`/root/workspace-agent-server/quick-notes` — it is complete, clean, and carries every commit.
+
+Everything else is finished and gated: 117 tests, lint 0 errors, signed APK (45 MB) + AAB
+(26 MB) at `app/build/outputs/…`, docs complete.
