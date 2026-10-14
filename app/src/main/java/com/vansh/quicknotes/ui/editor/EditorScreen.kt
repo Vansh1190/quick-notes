@@ -56,13 +56,21 @@ import com.vansh.quicknotes.ui.design.qnPressable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun EditorScreen(
     onBack: () -> Unit,
     onPickImage: ((java.io.File) -> Unit) -> Unit = {},
     viewModel: EditorViewModel = hiltViewModel(),
 ) {
+    val recording = com.vansh.quicknotes.ui.voice.RememberRecordingController(noteId = viewModel.noteIdOrNull())
+    if (recording.showSheetState.value) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { recording.showSheetState.value = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            com.vansh.quicknotes.ui.voice.RecordingSheetHost(recording)
+        }
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val palette = LocalQNPalette.current
     val focusRequester = remember { FocusRequester() }
@@ -118,7 +126,7 @@ fun EditorScreen(
         }
 
         CaptureBar(
-            onMic = { /* M3 recording sheet */ },
+            onMic = { recording.start() },
             onCamera = { showCamera = true },
             onDraw = { showDrawing = true },
             onLink = { showLinkDialog = true },

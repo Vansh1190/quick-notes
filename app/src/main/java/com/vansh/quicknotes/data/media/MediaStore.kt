@@ -20,7 +20,8 @@ class MediaStore @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dao: NoteDao,
 ) {
-    private val root: File get() = File(context.filesDir, "media").apply { mkdirs() }
+    val rootDir: File get() = File(context.filesDir, "media").apply { mkdirs() }
+    private val root: File get() = rootDir
 
     fun fileFor(relativePath: String): File = File(root, relativePath)
 

@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 03:15 — M2 complete & committed. 59 unit tests, lint 0 errors. Starting M3 (voice FGS + Live Update).
+Heartbeat (UTC): 2026-10-14 03:55 — M3 committed. 74 unit tests, lint 0 errors, APK builds. Starting M4 (widgets/QS tile/shortcuts).
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)
@@ -30,5 +30,15 @@ Heartbeat (UTC): 2026-10-14 03:15 — M2 complete & committed. 59 unit tests, li
 - Evidence: docs/evidence m2-editor-blocks.png, m2-drawing.png.
 - Known v1 gaps logged: link thumbnail *image* download (title/site done), Scan-text OCR mode (spec marks optional), ML Kit not yet integrated (M2/M6 boundary).
 
+## Done (M3 Voice / recording)
+- ChunkedPcmWriter: PCM16 100 ms frames fsynced to <media>/recordings/<session>/chunk-*.pcm (survives force-kill) → PcmToAac (MediaCodec AAC + MediaMuxer; WAV fallback). ChunkedPcmWriter + recovery logic are pure/unit-tested.
+- RecordingService: mic foreground service (FOREGROUND_SERVICE_TYPE_MICROPHONE) — AudioRecord→chunks, notification with Stop + live timer, pause/resume freezes elapsed, finalizes to AAC voice block on the target note (or new note from Home/widget). On Android 16+ requests promoted-ongoing (Live Update) + determinate progress (NotificationCompat 1.18 setRequestPromotedOngoing/setProgress) — all SDK 36 guarded, silent fallback below.
+- RecordingRecoveryRunner on MainActivity start: filesystem scan of chunk dirs (finalize deletes them, so survivors = crash) → each orphan becomes a "Recovered recording" voice note (tests: single, multiple, empty).
+- Transcriber interface: Stub (default) + Server (POST /audio/transcriptions, behind Settings.serverTranscription toggle — endpoint confirmed no /audio/transcriptions in Phase 0, so honest default is no transcript). Transcript applied to block + media_assets in background.
+- RecordingSheet UI (waveform canvas, timer, pause/stop), RememberRecordingController (mic→notifications permission flow).
+- SettingsRepository (DataStore prefs) + SecretStore (Keystore AES-GCM for API key at rest) — foundation for M6 AI.
+- Lint: MissingPermission on AudioRecord/notify fixed with explicit checkPermission + SecurityException catch.
+- Evidence: docs/evidence/m3-recording-sheet.png.
+
 ## Next
-- M3: AudioRecorder (crash-safe chunks), RecordingService (mic FGS + notification with ProgressStyle/promoted-ongoing on 36), recovery scanner, RecordingSheet UI, on-device transcription (SpeechRecognizer), editor voice block live state.
+- M4: Glance home-screen widget (1x1 new-note, 4x2 recent), Quick Settings tile, App shortcuts (long-press), Quick Capture lock-screen activity.

@@ -42,6 +42,7 @@ import kotlin.math.absoluteValue
 fun HomeScreen(
     onOpenNote: (String) -> Unit,
     onNewNote: () -> Unit,
+    onVoiceNote: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -103,6 +104,7 @@ fun HomeScreen(
 
         CapturePill(
             onNewNote = onNewNote,
+            onVoice = onVoiceNote,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 26.dp),
         )
     }
@@ -170,7 +172,7 @@ fun NoteCard(note: NoteEntity, onClick: () -> Unit, pinnedStyle: Boolean = false
 }
 
 @Composable
-fun CapturePill(onNewNote: () -> Unit, modifier: Modifier = Modifier) {
+fun CapturePill(onNewNote: () -> Unit, onVoice: () -> Unit = {}, modifier: Modifier = Modifier) {
     val palette = LocalQNPalette.current
     Row(
         horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -181,8 +183,8 @@ fun CapturePill(onNewNote: () -> Unit, modifier: Modifier = Modifier) {
             .padding(horizontal = 24.dp, vertical = 15.dp)
             .testTag("home_capture_pill"),
     ) {
-        listOf("Mic", "Camera", "Draw", "Link", "List").forEach { label ->
-            Text(label, style = QNType.headline, color = palette.accent, modifier = Modifier.qnPressable {}.testTag("pill_$label"))
+        listOf("Mic" to onVoice, "Camera" to onNewNote, "Draw" to onNewNote, "Link" to onNewNote, "List" to onNewNote).forEach { (label, action) ->
+            Text(label, style = QNType.headline, color = palette.accent, modifier = Modifier.qnPressable(onClick = action).testTag("pill_$label"))
         }
         Box(
             Modifier

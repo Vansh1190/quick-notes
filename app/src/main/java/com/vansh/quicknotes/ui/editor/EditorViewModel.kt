@@ -179,6 +179,8 @@ class EditorViewModel @Inject constructor(
     }
 
     /** Spec §5.1: also flush on pause/stop — called from the screen's lifecycle observer. */
+    fun noteIdOrNull(): String? = current?.id
+
     fun flushSave() {
         viewModelScope.launch { autoSave.flush() }
     }

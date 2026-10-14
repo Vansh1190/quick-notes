@@ -171,6 +171,22 @@ class EvidenceScreenshotTest {
     }
 
     @Test
+    fun m3RecordingSheet() {
+        composeRule.setContent {
+            Box(Modifier.testTag("shot_root")) {
+                QuickNotesTheme(darkTheme = false) {
+                    com.vansh.quicknotes.ui.voice.RecordingSheet(
+                        active = com.vansh.quicknotes.service.RecordingSessions.Active("s1", null, startedAt = System.currentTimeMillis() - 42_000),
+                        onPause = {}, onResume = {}, onStop = {}, onCancel = {},
+                    )
+                }
+            }
+        }
+        settle()
+        save("m3-recording-sheet")
+    }
+
+    @Test
     fun editorWithBlocks() {
         lateinit var vm: EditorViewModel
         composeRule.setContent {

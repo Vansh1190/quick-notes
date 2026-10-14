@@ -22,10 +22,12 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var shareRouter: ShareRouter
     @Inject lateinit var shareHandler: ShareHandler
+    @Inject lateinit var recoveryRunner: com.vansh.quicknotes.domain.voice.RecordingRecoveryRunner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        lifecycleScope.launch { recoveryRunner.run() }
         handleIntent(intent)
         setContent {
             QuickNotesTheme {

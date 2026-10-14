@@ -32,10 +32,20 @@ fun QuickNotesNavHost(
     }
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
+            val recording = com.vansh.quicknotes.ui.voice.RememberRecordingController(noteId = null)
             HomeScreen(
                 onOpenNote = { id -> navController.navigate(Routes.editor(id)) },
                 onNewNote = { navController.navigate(Routes.editor(Routes.NEW_NOTE_ID)) },
+                onVoiceNote = { recording.start() },
             )
+            if (recording.showSheetState.value) {
+                androidx.compose.ui.window.Dialog(
+                    onDismissRequest = { recording.showSheetState.value = false },
+                    properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+                ) {
+                    com.vansh.quicknotes.ui.voice.RecordingSheetHost(recording)
+                }
+            }
         }
         composable(
             route = Routes.EDITOR,

@@ -29,4 +29,13 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun linkFetcher(): LinkFetcher = HttpLinkFetcher()
+
+    @Provides
+    @Singleton
+    fun transcriber(
+        stub: com.vansh.quicknotes.domain.voice.StubTranscriber,
+        server: com.vansh.quicknotes.domain.voice.ServerTranscriber,
+        settings: com.vansh.quicknotes.data.settings.SettingsRepository,
+    ): com.vansh.quicknotes.domain.voice.Transcriber =
+        if (settings.current().serverTranscription) server else stub
 }

@@ -52,6 +52,11 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".service.RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
     </application>
 
 </manifest>
