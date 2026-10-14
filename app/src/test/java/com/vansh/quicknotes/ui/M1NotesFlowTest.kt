@@ -83,7 +83,7 @@ class M1NotesFlowTest {
         composeRule.setContent {
             QuickNotesTheme {
                 editorVm = androidx.compose.runtime.remember {
-                    EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, HttpLinkFetcher())
+                    EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, HttpLinkFetcher(), object : dagger.Lazy<com.vansh.quicknotes.domain.ai.AiService> { override fun get() = com.vansh.quicknotes.domain.ai.AiService(object : com.vansh.quicknotes.domain.ai.AiClient { override fun isConfigured() = false; override suspend fun chat(messages: kotlin.collections.List<com.vansh.quicknotes.domain.ai.ChatMessage>, temperature: Double, maxTokens: Int, jsonMode: Boolean, toolName: String?, toolDescription: String, toolSchema: kotlinx.serialization.json.JsonObject?) = throw com.vansh.quicknotes.domain.ai.AiException("offline") }) })
                 }
                 EditorScreen(onBack = {}, onPickImage = {}, viewModel = editorVm)
             }
@@ -112,7 +112,7 @@ class M1NotesFlowTest {
                 HomeScreen(
                     onOpenNote = {},
                     onNewNote = {},
-                    viewModel = HomeViewModel(repository),
+                    viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy),
                 )
             }
         }
@@ -130,7 +130,7 @@ class M1NotesFlowTest {
     fun `empty home shows the first-run message`() {
         composeRule.setContent {
             QuickNotesTheme {
-                HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository))
+                HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy))
             }
         }
         settle()

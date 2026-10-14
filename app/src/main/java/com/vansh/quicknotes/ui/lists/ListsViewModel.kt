@@ -4,6 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vansh.quicknotes.data.local.TodoListEntity
 import com.vansh.quicknotes.data.repository.ListsRepository
+import com.vansh.quicknotes.domain.ai.AiClient
+import com.vansh.quicknotes.domain.ai.AiException
+import com.vansh.quicknotes.domain.ai.AiService
+import com.vansh.quicknotes.domain.ai.ChatMessage
+import com.vansh.quicknotes.domain.ai.ChatResult
 import com.vansh.quicknotes.domain.lists.DumpAndSortSplitter
 import com.vansh.quicknotes.domain.lists.ProposedList
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +26,18 @@ data class ListsUiState(
 @HiltViewModel
 open class ListsViewModel @Inject constructor(
     private val repository: ListsRepository,
+    private val ai: dagger.Lazy<AiService> = dagger.Lazy { AiService(object : AiClient {
+        override fun isConfigured() = false
+        override suspend fun chat(
+            messages: List<ChatMessage>,
+            temperature: Double,
+            maxTokens: Int,
+            jsonMode: Boolean,
+            toolName: String?,
+            toolDescription: String,
+            toolSchema: kotlinx.serialization.json.JsonObject?,
+        ): ChatResult = throw AiException("offline")
+    }) },
 ) : ViewModel() {
 
     val state: StateFlow<ListsUiState> = repository.observeSummaries()
@@ -32,11 +49,12 @@ open class ListsViewModel @Inject constructor(
         viewModelScope.launch { onCreated(repository.createList(title)) }
     }
 
-    /** Dump & Sort preview (heuristic stub until the M6 LLM pass). */
+    /** Dump & Sort: LLM first, heuristic stub as the offline fallback (spec §8 feature 1). */
     fun propose(text: String, onDone: (List<ProposedList>) -> Unit) {
         viewModelScope.launch {
             val existing = repository.allTitles()
-            onDone(DumpAndSortSplitter.split(text, existing))
+            val llm = runCatching { ai.get().dumpAndSort(text, existing) }.getOrNull().orEmpty()
+            onDone(llm.ifEmpty { DumpAndSortSplitter.split(text, existing) })
         }
     }
 

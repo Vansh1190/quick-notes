@@ -17,6 +17,9 @@ class AiServiceTest {
             temperature: Double,
             maxTokens: Int,
             jsonMode: Boolean,
+            toolName: String?,
+            toolDescription: String,
+            toolSchema: kotlinx.serialization.json.JsonObject?,
         ): ChatResult {
             val reply = replies[minOf(calls, replies.lastIndex)]
             calls += 1

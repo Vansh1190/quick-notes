@@ -113,7 +113,7 @@ class EvidenceScreenshotTest {
         composeRule.setContent {
             Box(Modifier.testTag("shot_root")) {
                 QuickNotesTheme(darkTheme = false) {
-                    HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository))
+                    HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy))
                 }
             }
         }
@@ -139,7 +139,7 @@ class EvidenceScreenshotTest {
         composeRule.setContent {
             Box(Modifier.testTag("shot_root")) {
                 QuickNotesTheme(darkTheme = false) {
-                    vm = remember { com.vansh.quicknotes.ui.editor.EditorViewModel(SavedStateHandle(mapOf("noteId" to id)), repository, mediaStore, LinkFetcherStub) }
+                    vm = remember { com.vansh.quicknotes.ui.editor.EditorViewModel(SavedStateHandle(mapOf("noteId" to id)), repository, mediaStore, LinkFetcherStub, object : dagger.Lazy<com.vansh.quicknotes.domain.ai.AiService> { override fun get() = com.vansh.quicknotes.domain.ai.AiService(object : com.vansh.quicknotes.domain.ai.AiClient { override fun isConfigured() = false; override suspend fun chat(messages: kotlin.collections.List<com.vansh.quicknotes.domain.ai.ChatMessage>, temperature: Double, maxTokens: Int, jsonMode: Boolean, toolName: String?, toolDescription: String, toolSchema: kotlinx.serialization.json.JsonObject?) = throw com.vansh.quicknotes.domain.ai.AiException("offline") }) }) }
                     EditorScreen(onBack = {}, onPickImage = {}, viewModel = vm)
                 }
             }
@@ -223,7 +223,7 @@ class EvidenceScreenshotTest {
             Box(Modifier.testTag("shot_root")) {
                 QuickNotesTheme(darkTheme = false) {
                     vm = remember {
-                        EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, HttpLinkFetcher())
+                        EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, HttpLinkFetcher(), object : dagger.Lazy<com.vansh.quicknotes.domain.ai.AiService> { override fun get() = com.vansh.quicknotes.domain.ai.AiService(object : com.vansh.quicknotes.domain.ai.AiClient { override fun isConfigured() = false; override suspend fun chat(messages: kotlin.collections.List<com.vansh.quicknotes.domain.ai.ChatMessage>, temperature: Double, maxTokens: Int, jsonMode: Boolean, toolName: String?, toolDescription: String, toolSchema: kotlinx.serialization.json.JsonObject?) = throw com.vansh.quicknotes.domain.ai.AiException("offline") }) })
                     }
                     EditorScreen(onBack = {}, onPickImage = {}, viewModel = vm)
                 }

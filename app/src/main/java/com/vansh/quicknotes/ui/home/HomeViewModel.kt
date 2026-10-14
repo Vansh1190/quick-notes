@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vansh.quicknotes.data.local.NoteEntity
 import com.vansh.quicknotes.data.repository.NotesRepository
+import com.vansh.quicknotes.data.repository.SearchableText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -12,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -24,12 +27,27 @@ data class HomeUiState(
     val query: String = "",
     val searching: Boolean = false,
     val results: List<NoteEntity> = emptyList(),
+    val recap: String? = null,
+    val recapBusy: Boolean = false,
 )
+
+sealed interface AskState {
+    data object Idle : AskState
+    data object Busy : AskState
+    data class Answer(val text: String, val noteIds: List<String>) : AskState
+    data class Failed(val message: String) : AskState
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: NotesRepository,
+    private val ai: dagger.Lazy<com.vansh.quicknotes.domain.ai.AiService>,
 ) : ViewModel() {
+
+    private val _askState = MutableStateFlow<AskState>(AskState.Idle)
+    val askState: StateFlow<AskState> = _askState.asStateFlow()
+    private val _recap = MutableStateFlow<String?>(null)
+    val recap: StateFlow<String?> = _recap.asStateFlow()
 
     private val query = MutableStateFlow("")
 
@@ -47,6 +65,49 @@ class HomeViewModel @Inject constructor(
             results = results,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    /** Spec §8 feature 3: answer from the user's own notes, with citations. */
+    fun ask(question: String) {
+        _askState.value = AskState.Busy
+        viewModelScope.launch {
+            val candidates = repository.search(question.split(" ").takeLast(3).joinToString(" "))
+                .ifEmpty { repository.observeActiveNotes().first().take(8).mapNotNull { repository.loadNote(it.id) } }
+            val context = candidates.take(6).map { note ->
+                "${note.id}|${note.title.ifBlank { "Untitled" }}" to
+                    SearchableText.fromBlocks(note.blocks).take(700)
+            }
+            if (context.isEmpty()) {
+                _askState.value = AskState.Answer("You have no notes yet.", emptyList())
+                return@launch
+            }
+            val result = runCatching { ai.get().askMyNotes(question, context) }.getOrNull()
+            _askState.value = if (result == null) {
+                AskState.Failed("Couldn't reach the AI")
+            } else {
+                AskState.Answer(result.answer, result.noteIds.filter { id -> context.any { it.first.startsWith(id) } })
+            }
+        }
+    }
+
+    fun dismissAsk() { _askState.value = AskState.Idle }
+
+    /** Spec §8 feature 8: evening recap, computed on demand (and by DailyRecapWorker). */
+    fun refreshRecap(force: Boolean = false) {
+        viewModelScope.launch {
+            val today = java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val todays = repository.observeActiveNotes().first().filter { it.updatedAt >= today }.take(6)
+            if (todays.isEmpty() && !force) return@launch
+            _recap.value = _recap.value
+            val captures = todays.mapNotNull { e -> repository.loadNote(e.id)?.let { it.title to SearchableText.fromBlocks(it.blocks) } }
+            if (captures.isEmpty()) return@launch
+            _recap.value = null
+            val text = runCatching { ai.get().dailyRecap(captures.map { it.first to it.second.take(140) }, emptyList()) }.getOrNull()
+            if (text != null) _recap.value = text
+        }
+    }
 
     private fun searchFlow(q: String) = flow {
         if (q.isBlank()) {

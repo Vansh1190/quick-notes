@@ -75,7 +75,7 @@ class M2BlocksFlowTest {
     }
 
     private fun editorVm(noteId: String = "new"): EditorViewModel =
-        EditorViewModel(SavedStateHandle(mapOf("noteId" to noteId)), repository, mediaStore, stubLinks)
+        EditorViewModel(SavedStateHandle(mapOf("noteId" to noteId)), repository, mediaStore, stubLinks, object : dagger.Lazy<com.vansh.quicknotes.domain.ai.AiService> { override fun get() = com.vansh.quicknotes.domain.ai.AiService(object : com.vansh.quicknotes.domain.ai.AiClient { override fun isConfigured() = false; override suspend fun chat(messages: kotlin.collections.List<com.vansh.quicknotes.domain.ai.ChatMessage>, temperature: Double, maxTokens: Int, jsonMode: Boolean, toolName: String?, toolDescription: String, toolSchema: kotlinx.serialization.json.JsonObject?) = throw com.vansh.quicknotes.domain.ai.AiException("offline") }) })
 
     @Test
     fun `every v1 block type renders in the editor and survives a reload`() {

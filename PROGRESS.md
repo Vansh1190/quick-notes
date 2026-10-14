@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 06:15 — M5 committed (54ab210). 101 unit tests, lint 0 errors, APK builds. Starting M6 (AI features).
+Heartbeat (UTC): 2026-10-14 06:35 — M6 core in. Ask My Notes + Daily Recap on Home, AI sheet in Editor (tidy/summarize/grammar/title+tags w/ snapshot undo), LLM Dump&Sort w/ heuristic fallback. 113 tests. Finishing M6 UIs then M7.
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)

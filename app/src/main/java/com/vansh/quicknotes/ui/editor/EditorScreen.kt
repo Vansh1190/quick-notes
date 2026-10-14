@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -79,6 +80,7 @@ fun EditorScreen(
     var showCamera by remember { mutableStateOf(false) }
     var showDrawing by remember { mutableStateOf(false) }
     var showLinkDialog by remember { mutableStateOf(false) }
+    var showAiSheet by remember { mutableStateOf(false) }
     var linkInput by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
     val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -146,8 +148,15 @@ fun EditorScreen(
             onLink = { showLinkDialog = true },
             onChecklist = { viewModel.addChecklist() },
             onGallery = { galleryLauncher.launch("image/*") },
+            onAi = { showAiSheet = true },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        if (showAiSheet) {
+            androidx.compose.ui.window.Dialog(onDismissRequest = { showAiSheet = false }) {
+                AiSheet(viewModel) { showAiSheet = false }
+            }
+        }
     }
 
     if (showCamera) {
@@ -422,6 +431,7 @@ private fun CaptureBar(
     onLink: () -> Unit,
     onChecklist: () -> Unit,
     onGallery: () -> Unit,
+    onAi: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalQNPalette.current
@@ -436,7 +446,7 @@ private fun CaptureBar(
             .padding(horizontal = 22.dp, vertical = 14.dp)
             .testTag("editor_capture_bar"),
     ) {
-        listOf("Mic" to onMic, "Camera" to onCamera, "Draw" to onDraw, "Link" to onLink, "Checklist" to onChecklist, "Photo" to onGallery).forEach { (label, action) ->
+        listOf("Mic" to onMic, "Camera" to onCamera, "Draw" to onDraw, "Link" to onLink, "Checklist" to onChecklist, "Photo" to onGallery, "AI" to onAi).forEach { (label, action) ->
             Text(
                 label,
                 style = QNType.headline,
@@ -446,5 +456,81 @@ private fun CaptureBar(
                     .testTag("capture_${label.lowercase()}"),
             )
         }
+    }
+}
+
+/** Spec §8 in-editor AI: sparkle sheet, preview-first, accept or undo (snapshot already taken). */
+@Composable
+private fun AiSheet(viewModel: EditorViewModel, onDone: () -> Unit) {
+    val palette = LocalQNPalette.current
+    val aiState by viewModel.aiState.collectAsStateWithLifecycle()
+    var titleDone by remember { mutableStateOf<String?>(null) }
+    var snackbar by remember { mutableStateOf<String?>(null) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(palette.surface)
+            .padding(18.dp)
+            .testTag("editor_ai_sheet"),
+    ) {
+        Text("AI", style = QNType.title, color = palette.textPrimary)
+        Spacer(Modifier.height(10.dp))
+        val options = listOf(
+            "Tidy this up" to { viewModel.aiCleanUp("tidy") },
+            "Summarize" to { viewModel.aiCleanUp("summarize") },
+            "Fix grammar" to { viewModel.aiCleanUp("grammar") },
+            "Title + tags" to { viewModel.aiTitleAndTags { t, tags -> titleDone = t + if (tags.isNotEmpty()) " · " + tags.joinToString("/") else "" } },
+        )
+        options.forEach { (label, action) ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(palette.card)
+                    .qnPressable(enabled = aiState !is EditorViewModel.AiState.Busy) { action() }
+                    .padding(vertical = 13.dp, horizontal = 14.dp)
+                    .testTag("ai_option_" + label.replace(" ", "_").lowercase()),
+            ) {
+                Text(label, style = QNType.body, color = palette.textPrimary)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        when (val s = aiState) {
+            is EditorViewModel.AiState.Busy -> Text("Thinking…", style = QNType.caption, color = palette.textTertiary)
+            is EditorViewModel.AiState.Failed -> Text(s.message, style = QNType.caption, color = palette.destructive)
+            is EditorViewModel.AiState.Preview -> {
+                Text(s.newText.take(240), style = QNType.caption, color = palette.textSecondary, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(palette.card)
+                            .qnPressable { viewModel.aiDismissPreview() }.testTag("ai_undo"),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("Undo", style = QNType.subheadline, color = palette.destructive) }
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(palette.accent)
+                            .qnPressable { viewModel.aiAcceptPreview(); snackbar = "Replaced · Undo still available" }.testTag("ai_accept"),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("Keep it", style = QNType.subheadline, color = palette.onAccent) }
+                }
+            }
+            else -> Unit
+        }
+        titleDone?.let {
+            Spacer(Modifier.height(6.dp))
+            Text("Title → $it", style = QNType.caption, color = palette.success, modifier = Modifier.testTag("ai_title_done"))
+        }
+        snackbar?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(it, style = QNType.caption, color = palette.textTertiary)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Done",
+            style = QNType.headline,
+            color = palette.accent,
+            modifier = Modifier.align(Alignment.End).qnPressable(onClick = onDone).testTag("ai_close"),
+        )
     }
 }
