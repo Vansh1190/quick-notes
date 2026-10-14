@@ -18,6 +18,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.concurrent.thread
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -44,6 +45,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             onboardingPending.value = settings.settings.first().onboardingDone != true
         }
+        showStoredCrashIfAny()
         setContent {
             QuickNotesTheme {
                 QuickNotesNavHost(
@@ -68,6 +70,22 @@ class MainActivity : ComponentActivity() {
         routeExtras(intent)
         handleIntent(intent)
         ShortcutPublisher.publish(this)
+    }
+
+    private fun showStoredCrashIfAny() {
+        val file = com.vansh.quicknotes.CrashCatcher.crashFile(this)
+        if (!file.exists()) return
+        thread(isDaemon = true, name = "crash-report") {
+            val trace = runCatching { file.readText() }.getOrDefault("crash file unreadable")
+            runOnUiThread {
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("Quick Notes crashed on a previous launch")
+                    .setMessage(trace.take(4000))
+                    .setPositiveButton("Delete crash report") { _, _ -> file.delete() }
+                    .setNegativeButton("Keep it") { _, _ -> }
+                    .show()
+            }
+        }
     }
 
     private fun routeExtras(intent: Intent?) {

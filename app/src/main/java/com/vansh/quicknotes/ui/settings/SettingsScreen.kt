@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vansh.quicknotes.data.settings.SettingsRepository
 import com.vansh.quicknotes.ui.design.LocalQNPalette
 import com.vansh.quicknotes.ui.design.QNType
 import com.vansh.quicknotes.ui.design.qnPressable
@@ -75,7 +76,7 @@ fun SettingsScreen(
 
         SectionLabel("AI (your endpoint)")
         SettingsCard {
-            LabeledField("Base URL", "https://your-endpoint/v1", baseUrl, { baseUrl = it; viewModel.saveBaseUrl(it) }, "settings_base_url")
+            LabeledField("Base URL", SettingsRepository.DefaultBaseUrl, baseUrl, { baseUrl = it; viewModel.saveBaseUrl(it) }, "settings_base_url")
             LabeledField("Model", "cora_chat", model, { model = it; viewModel.saveModel(it) }, "settings_model")
             LabeledField(
                 "API key",

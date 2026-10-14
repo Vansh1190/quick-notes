@@ -23,6 +23,8 @@ class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val secretStore: SecretStore,
 ) {
+    companion object { const val DefaultBaseUrl = "https://backend.codemate.ai/v1" }
+
     private object Keys {
         val baseUrl = stringPreferencesKey("ai_base_url")
         val model = stringPreferencesKey("ai_model")
@@ -37,7 +39,7 @@ class SettingsRepository @Inject constructor(
     }
 
     data class Settings(
-        val baseUrl: String = "",
+        val baseUrl: String = DefaultBaseUrl,
         val model: String = "cora_chat",
         val hasApiKey: Boolean = false,
         val transcriptionModel: String = "whisper-1",
