@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.lifecycleScope
 import com.vansh.quicknotes.domain.SharedContent
 import com.vansh.quicknotes.domain.ShareHandler
@@ -24,21 +25,43 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var shareHandler: ShareHandler
     @Inject lateinit var recoveryRunner: com.vansh.quicknotes.domain.voice.RecordingRecoveryRunner
 
+    private val pendingOpenNote = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    private val pendingCaptureMode = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         lifecycleScope.launch { recoveryRunner.run() }
+        routeExtras(intent)
         handleIntent(intent)
+        ShortcutPublisher.publish(this)
         setContent {
             QuickNotesTheme {
-                QuickNotesNavHost(shareRouter = shareRouter)
+                QuickNotesNavHost(
+                    shareRouter = shareRouter,
+                    startAtNoteId = pendingOpenNote.collectAsState().value,
+                    startInCaptureMode = pendingCaptureMode.collectAsState().value,
+                    onLaunched = {
+                        pendingOpenNote.value = null
+                        pendingCaptureMode.value = null
+                    },
+                )
             }
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
+        routeExtras(intent)
         handleIntent(intent)
+        ShortcutPublisher.publish(this)
+    }
+
+    private fun routeExtras(intent: Intent?) {
+        intent ?: return
+        intent.getStringExtra("open_note_id")?.let { pendingOpenNote.value = it }
+        intent.getStringExtra(EXTRA_CAPTURE_MODE)?.let { pendingCaptureMode.value = it }
     }
 
     private fun handleIntent(intent: Intent?) {
@@ -54,6 +77,13 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        const val EXTRA_CAPTURE_MODE = "capture_mode"
+
+        fun openNoteIntent(context: android.content.Context, noteId: String): Intent =
+            Intent(context, MainActivity::class.java)
+                .putExtra("open_note_id", noteId)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+
         suspend fun parseShare(context: Context, intent: Intent): SharedContent? {
             val textType = intent.type?.startsWith("text/") == true
             val bytes: Pair<ByteArray, String>? = if (intent.type?.startsWith("image/") == true) {

@@ -44,6 +44,16 @@ interface NoteDao {
     )
     fun observeActiveNotes(): Flow<List<NoteEntity>>
 
+    @Query(
+        """
+        SELECT * FROM notes
+        WHERE deletedAt IS NULL AND archived = 0
+        ORDER BY pinned DESC, updatedAt DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun activeNotesOnce(limit: Int): List<NoteEntity>
+
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL AND archived = 1 ORDER BY updatedAt DESC")
     fun observeArchived(): Flow<List<NoteEntity>>
 

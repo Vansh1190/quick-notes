@@ -14,20 +14,37 @@ import com.vansh.quicknotes.ui.home.HomeScreen
 
 object Routes {
     const val HOME = "home"
-    const val EDITOR = "editor/{noteId}"
+    const val EDITOR = "editor/{noteId}?mode={mode}"
 
-    fun editor(noteId: String) = "editor/$noteId"
+    fun editor(noteId: String, mode: String? = null) =
+        if (mode != null) "editor/$noteId?mode=$mode" else "editor/$noteId"
+
     const val NEW_NOTE_ID = "new"
 }
 
 @Composable
 fun QuickNotesNavHost(
     shareRouter: ShareRouter,
+    startAtNoteId: String? = null,
+    startInCaptureMode: String? = null,
+    onLaunched: () -> Unit = {},
     navController: NavHostController = rememberNavController(),
 ) {
     LaunchedEffect(shareRouter) {
         shareRouter.openNote.collect { id ->
             navController.navigate(Routes.editor(id))
+        }
+    }
+    LaunchedEffect(startAtNoteId, startInCaptureMode) {
+        when {
+            startAtNoteId != null -> {
+                navController.navigate(Routes.editor(startAtNoteId))
+                onLaunched()
+            }
+            startInCaptureMode != null -> {
+                navController.navigate(Routes.editor(Routes.NEW_NOTE_ID, startInCaptureMode))
+                onLaunched()
+            }
         }
     }
     NavHost(navController = navController, startDestination = Routes.HOME) {
@@ -49,11 +66,15 @@ fun QuickNotesNavHost(
         }
         composable(
             route = Routes.EDITOR,
-            arguments = listOf(navArgument("noteId") { type = NavType.StringType }),
-        ) {
+            arguments = listOf(
+                navArgument("noteId") { type = NavType.StringType },
+                navArgument("mode") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) { entry ->
             EditorScreen(
                 onBack = { navController.popBackStack() },
                 onPickImage = {},
+                autoMode = entry.arguments?.getString("mode").orEmpty(),
             )
         }
     }

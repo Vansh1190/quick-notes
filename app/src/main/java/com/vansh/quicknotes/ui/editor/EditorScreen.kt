@@ -60,6 +60,7 @@ import kotlinx.coroutines.withContext
 fun EditorScreen(
     onBack: () -> Unit,
     onPickImage: ((java.io.File) -> Unit) -> Unit = {},
+    autoMode: String = "",
     viewModel: EditorViewModel = hiltViewModel(),
 ) {
     val recording = com.vansh.quicknotes.ui.voice.RememberRecordingController(noteId = viewModel.noteIdOrNull())
@@ -90,6 +91,19 @@ fun EditorScreen(
                 val ext = if (context.contentResolver.getType(u)?.contains("png") == true) "png" else "jpg"
                 viewModel.addImage(bytes, ext)
             }
+        }
+    }
+
+    var autoModeHandled by remember { mutableStateOf(autoMode.isEmpty()) }
+    LaunchedEffect(state.loaded, autoModeHandled) {
+        if (!state.loaded || autoModeHandled) return@LaunchedEffect
+        autoModeHandled = true
+        when (autoMode) {
+            "voice" -> recording.start()
+            "camera" -> showCamera = true
+            "draw" -> showDrawing = true
+            "list" -> viewModel.addChecklist()
+            else -> Unit
         }
     }
 
