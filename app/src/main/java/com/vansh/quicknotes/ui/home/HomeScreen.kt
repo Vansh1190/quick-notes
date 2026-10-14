@@ -45,6 +45,7 @@ fun HomeScreen(
     onNewNote: () -> Unit,
     onVoiceNote: () -> Unit = {},
     onOpenLists: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -69,6 +70,16 @@ fun HomeScreen(
                                 .testTag("home_lists_button"),
                         ) {
                             Text("Lists", style = QNType.captionTinted, color = palette.accent)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(palette.surface, RoundedCornerShape(12.dp))
+                                .qnPressable(onClick = onOpenSettings)
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .testTag("home_settings_button"),
+                        ) {
+                            Text("⚙", style = QNType.captionTinted, color = palette.textSecondary)
                         }
                     }
                     Spacer(Modifier.height(12.dp))

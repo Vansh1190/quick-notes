@@ -45,4 +45,15 @@ object DatabaseModule {
         settings: com.vansh.quicknotes.data.settings.SettingsRepository,
     ): com.vansh.quicknotes.domain.voice.Transcriber =
         if (settings.current().serverTranscription) server else stub
+
+    @Provides
+    @Singleton
+    fun aiClient(
+        settings: com.vansh.quicknotes.data.settings.SettingsRepository,
+        secrets: com.vansh.quicknotes.crypto.SecretStore,
+    ): com.vansh.quicknotes.domain.ai.AiClient = com.vansh.quicknotes.domain.ai.HttpAiClient(
+        baseUrl = { settings.current().baseUrl },
+        apiKey = { secrets.getApiKey() },
+        model = { settings.current().model },
+    )
 }

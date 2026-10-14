@@ -15,6 +15,7 @@ import com.vansh.quicknotes.ui.home.HomeScreen
 object Routes {
     const val HOME = "home"
     const val LISTS = "lists"
+    const val SETTINGS = "settings"
     const val LIST_DETAIL = "list/{listId}"
     const val EDITOR = "editor/{noteId}?mode={mode}"
 
@@ -66,6 +67,7 @@ fun QuickNotesNavHost(
             HomeScreen(
                 onOpenNote = { id -> navController.navigate(Routes.editor(id)) },
                 onOpenLists = { navController.navigate(Routes.LISTS) },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onNewNote = { navController.navigate(Routes.editor(Routes.NEW_NOTE_ID)) },
                 onVoiceNote = { recording.start() },
             )
