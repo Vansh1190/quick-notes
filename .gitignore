@@ -1,7 +1,10 @@
 *.iml
 .idea/
+.gradle/
+.kotlin/
 build/
+*/build/
 local.properties
 release.keystore
 keystore.properties
-secrets*.md
+secrets*
