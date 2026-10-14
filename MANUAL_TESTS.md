@@ -42,3 +42,25 @@ states what to do and what you should see.
 21. Rotate mid-recording: service keeps recording; reopening Home re-attaches the sheet state.
 22. App theme: Light + Dark both correct; accent default Apple Notes yellow; reduce-motion
     system setting swaps springs for fades.
+
+## M4 — Widgets / tile / shortcuts
+23. Long-press launcher icon → 4 shortcuts: New note, Voice note, Scan, New list. Each opens
+    straight into that mode (voice starts the recording sheet; list creates a checklist note).
+24. Widget picker → "Quick Notes — New note" (2x2): tap → new note editor, keyboard up.
+25. "Quick Notes — Capture" (4x1): 5 buttons each open the right mode.
+    "Capture + recents" (4x2): 5 buttons + 3 recent notes; tapping a recent opens the editor.
+26. QS tile: pull down shade, edit tiles, add "New note". Tap = quick capture; long-press = app.
+27. Large widget recents refresh after creating/editing a note (may need a moment).
+
+## M5 — Lists
+28. Home → "Lists" button → Lists screen. Create list via input + yellow +.
+29. Open a list: add items with the quick-add row; tap the circle → check animation + haptic +
+    progress ring updates; long-press-drag to reorder; swipe left on a row → Delete.
+30. Due dates: tap the ◷/○ on a row → reminder set for tomorrow 9:00 (AlarmManager; on Android
+    12-13 without "Alarms & reminders" permission it uses a 10-minute window — still fires).
+    Notification at due time opens the Lists screen; tapping ○ again clears it.
+31. Dump & Sort (typed): Lists → "Talk a whole day into lists" → paste
+    "Need to buy milk, eggs and bread. For work, send the invoice. Also call mom in the evening."
+    → Sort → shows Groceries / Work / Personal preview cards → edit/remove items → Done creates
+    the lists. Nothing is written until Done. Cancel writes nothing.
+32. After reboot, pending item reminders still fire (BootReceiver re-arms).

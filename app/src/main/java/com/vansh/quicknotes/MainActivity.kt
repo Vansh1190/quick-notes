@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
 
     private val pendingOpenNote = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private val pendingCaptureMode = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    private var pendingOpenLists = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         intent.getStringExtra("open_note_id")?.let { pendingOpenNote.value = it }
         intent.getStringExtra(EXTRA_CAPTURE_MODE)?.let { pendingCaptureMode.value = it }
+        if (intent.getBooleanExtra(EXTRA_OPEN_LISTS, false)) pendingOpenLists = true
     }
 
     private fun handleIntent(intent: Intent?) {
@@ -78,6 +80,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_CAPTURE_MODE = "capture_mode"
+        const val EXTRA_OPEN_LISTS = "open_lists"
 
         fun openNoteIntent(context: android.content.Context, noteId: String): Intent =
             Intent(context, MainActivity::class.java)

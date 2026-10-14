@@ -33,6 +33,7 @@ import com.vansh.quicknotes.ui.editor.EditorViewModel
 import com.vansh.quicknotes.ui.home.HomeScreen
 import com.vansh.quicknotes.ui.home.HomeViewModel
 import java.io.File
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -168,6 +169,35 @@ class EvidenceScreenshotTest {
         }
         settle()
         save("m2-drawing")
+    }
+
+    private object NoReminders : com.vansh.quicknotes.domain.reminder.ReminderScheduler {
+        override fun schedule(itemId: String, itemText: String, dueAt: Long) {}
+        override fun cancel(itemId: String) {}
+        override suspend fun rescheduleAll() {}
+    }
+
+    @Test
+    fun m5ListsScreen() {
+        val lists = com.vansh.quicknotes.data.repository.ListsRepository(db.todoDao(), NoReminders)
+        runBlocking {
+            val a = lists.createList("Groceries", items = listOf("milk", "eggs", "bread"))
+            lists.setDone(lists.observeList(a).first().second[0].id, true)
+            lists.createList("Work", items = listOf("send the invoice", "fix the login bug"))
+            lists.createList("Personal", items = listOf("call mom"))
+        }
+        composeRule.setContent {
+            Box(Modifier.testTag("shot_root")) {
+                QuickNotesTheme(darkTheme = false) {
+                    com.vansh.quicknotes.ui.lists.ListsScreen(
+                        onOpenList = {},
+                        viewModel = remember { com.vansh.quicknotes.ui.lists.ListsViewModel(lists) },
+                    )
+                }
+            }
+        }
+        settle()
+        save("m5-lists")
     }
 
     @Test

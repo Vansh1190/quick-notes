@@ -24,11 +24,18 @@ object DatabaseModule {
     fun noteDao(db: QuickNotesDatabase): NoteDao = db.noteDao()
 
     @Provides
+    fun todoDao(db: QuickNotesDatabase): com.vansh.quicknotes.data.local.TodoDao = db.todoDao()
+
+    @Provides
     fun searchIndex(db: QuickNotesDatabase): NoteSearchIndex = db.searchIndex
 
     @Provides
     @Singleton
     fun linkFetcher(): LinkFetcher = HttpLinkFetcher()
+
+    @Provides
+    @Singleton
+    fun reminderScheduler(impl: com.vansh.quicknotes.service.AlarmReminderScheduler): com.vansh.quicknotes.domain.reminder.ReminderScheduler = impl
 
     @Provides
     @Singleton

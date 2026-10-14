@@ -1,6 +1,7 @@
 package com.vansh.quicknotes.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ fun HomeScreen(
     onOpenNote: (String) -> Unit,
     onNewNote: () -> Unit,
     onVoiceNote: () -> Unit = {},
+    onOpenLists: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -57,7 +59,18 @@ fun HomeScreen(
         ) {
             item {
                 Column(Modifier.padding(top = 30.dp)) {
-                    Text("Notes", style = QNType.largeTitle, color = palette.textPrimary, modifier = Modifier.testTag("home_title"))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Notes", style = QNType.largeTitle, color = palette.textPrimary, modifier = Modifier.weight(1f).testTag("home_title"))
+                        Box(
+                            modifier = Modifier
+                                .background(palette.surface, RoundedCornerShape(12.dp))
+                                .qnPressable(onClick = onOpenLists)
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .testTag("home_lists_button"),
+                        ) {
+                            Text("Lists", style = QNType.captionTinted, color = palette.accent)
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
                     SearchField(
                         query = state.query,

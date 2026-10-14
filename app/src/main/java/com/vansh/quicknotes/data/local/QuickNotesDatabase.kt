@@ -54,8 +54,10 @@ class Fts5SearchIndex(private val dao: SearchDao) : NoteSearchIndex {
         TagEntity::class,
         NoteTagEntity::class,
         MediaAssetEntity::class,
+        TodoListEntity::class,
+        TodoItemEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class QuickNotesDatabase : RoomDatabase() {
@@ -63,9 +65,29 @@ abstract class QuickNotesDatabase : RoomDatabase() {
 
     abstract fun searchDao(): SearchDao
 
+    abstract fun todoDao(): TodoDao
+
     val searchIndex: NoteSearchIndex by lazy { Fts5SearchIndex(searchDao()) }
 
     companion object {
+        private val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS todo_lists (" +
+                        "id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, createdAt INTEGER NOT NULL, " +
+                        "source TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS todo_items (" +
+                        "id TEXT NOT NULL PRIMARY KEY, listId TEXT NOT NULL, text TEXT NOT NULL, " +
+                        "done INTEGER NOT NULL DEFAULT 0, dueAt INTEGER, parentId TEXT, orderIndex INTEGER NOT NULL DEFAULT 0, " +
+                        "FOREIGN KEY(listId) REFERENCES todo_lists(id) ON DELETE CASCADE)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_todo_items_listId ON todo_items(listId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_todo_items_dueAt ON todo_items(dueAt)")
+            }
+        }
+
         val callback = object : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
@@ -90,6 +112,7 @@ abstract class QuickNotesDatabase : RoomDatabase() {
         fun build(context: Context): QuickNotesDatabase =
             Room.databaseBuilder(context, QuickNotesDatabase::class.java, "quicknotes.db")
                 .addCallback(callback)
+                .addMigrations(MIGRATION_1_2)
                 .build()
     }
 }

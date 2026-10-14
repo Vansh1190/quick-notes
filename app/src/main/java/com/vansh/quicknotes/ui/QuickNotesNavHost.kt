@@ -14,7 +14,11 @@ import com.vansh.quicknotes.ui.home.HomeScreen
 
 object Routes {
     const val HOME = "home"
+    const val LISTS = "lists"
+    const val LIST_DETAIL = "list/{listId}"
     const val EDITOR = "editor/{noteId}?mode={mode}"
+
+    fun listDetail(listId: String) = "list/$listId"
 
     fun editor(noteId: String, mode: String? = null) =
         if (mode != null) "editor/$noteId?mode=$mode" else "editor/$noteId"
@@ -27,6 +31,7 @@ fun QuickNotesNavHost(
     shareRouter: ShareRouter,
     startAtNoteId: String? = null,
     startInCaptureMode: String? = null,
+    startAtLists: Boolean = false,
     onLaunched: () -> Unit = {},
     navController: NavHostController = rememberNavController(),
 ) {
@@ -35,14 +40,22 @@ fun QuickNotesNavHost(
             navController.navigate(Routes.editor(id))
         }
     }
-    LaunchedEffect(startAtNoteId, startInCaptureMode) {
+    LaunchedEffect(startAtNoteId, startInCaptureMode, startAtLists) {
         when {
+            startAtLists -> {
+                navController.navigate(Routes.LISTS)
+                onLaunched()
+            }
             startAtNoteId != null -> {
                 navController.navigate(Routes.editor(startAtNoteId))
                 onLaunched()
             }
             startInCaptureMode != null -> {
-                navController.navigate(Routes.editor(Routes.NEW_NOTE_ID, startInCaptureMode))
+                if (startInCaptureMode == com.vansh.quicknotes.widget.CaptureModes.LIST) {
+                    navController.navigate(Routes.LISTS)
+                } else {
+                    navController.navigate(Routes.editor(Routes.NEW_NOTE_ID, startInCaptureMode))
+                }
                 onLaunched()
             }
         }
@@ -52,6 +65,7 @@ fun QuickNotesNavHost(
             val recording = com.vansh.quicknotes.ui.voice.RememberRecordingController(noteId = null)
             HomeScreen(
                 onOpenNote = { id -> navController.navigate(Routes.editor(id)) },
+                onOpenLists = { navController.navigate(Routes.LISTS) },
                 onNewNote = { navController.navigate(Routes.editor(Routes.NEW_NOTE_ID)) },
                 onVoiceNote = { recording.start() },
             )
