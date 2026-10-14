@@ -91,6 +91,51 @@ class HomeViewModel @Inject constructor(
 
     fun dismissAsk() { _askState.value = AskState.Idle }
 
+    data class LooseEndsResult(val items: List<com.vansh.quicknotes.domain.ai.AiService.LooseEnd>)
+
+    private val _looseEnds = MutableStateFlow<LooseEndsResult?>(null)
+    val looseEnds: StateFlow<LooseEndsResult?> = _looseEnds.asStateFlow()
+
+    /** Spec §8 feature 7: scan recent notes for "need to / must / remember to". */
+    fun scanLooseEnds() {
+        viewModelScope.launch {
+            val notes = repository.observeActiveNotes().first().take(20)
+            val triples = notes.mapNotNull { e ->
+                repository.loadNote(e.id)?.let { Triple(it.id, it.title.ifBlank { "Untitled" }, SearchableText.fromBlocks(it.blocks)) }
+            }
+            if (triples.isEmpty()) return@launch
+            val found = runCatching { ai.get().looseEnds(triples) }.getOrNull().orEmpty()
+            _looseEnds.value = LooseEndsResult(found)
+        }
+    }
+
+    fun dismissLooseEnds() { _looseEnds.value = null }
+
+    /** One-tap: turn a loose end into a checked-off checklist item in its source note. */
+    fun addLooseEndToEnd(noteId: String, text: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            val note = repository.loadNote(noteId) ?: return@launch
+            val block = note.blocks.firstOrNull { b -> b.type == com.vansh.quicknotes.domain.model.BlockType.CHECKLIST }
+            val items = (block?.checklist?.items ?: emptyList()) +
+                com.vansh.quicknotes.domain.model.ChecklistItemPayload(java.util.UUID.randomUUID().toString(), text)
+            if (block != null) {
+                repository.saveNote(note.copy(blocks = note.blocks.map { if (it.id == block.id) it.copy(checklist = it.checklist?.copy(items = items)) else it }))
+            } else {
+                repository.saveNote(
+                    note.copy(
+                        blocks = note.blocks + com.vansh.quicknotes.domain.model.Block(
+                            id = java.util.UUID.randomUUID().toString(),
+                            type = com.vansh.quicknotes.domain.model.BlockType.CHECKLIST,
+                            orderIndex = note.blocks.size,
+                            checklist = com.vansh.quicknotes.domain.model.ChecklistBlockPayload(items),
+                        ),
+                    ),
+                )
+            }
+            onDone()
+        }
+    }
+
     /** Spec §8 feature 8: evening recap, computed on demand (and by DailyRecapWorker). */
     fun refreshRecap(force: Boolean = false) {
         viewModelScope.launch {

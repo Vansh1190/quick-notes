@@ -57,6 +57,8 @@ fun HomeScreen(
     val askState by viewModel.askState.collectAsStateWithLifecycle()
     var showAsk by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var askInput by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    val looseEnds by viewModel.looseEnds.collectAsStateWithLifecycle()
+    var showLooseEnds by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     LaunchedEffect(Unit) { viewModel.refreshRecap() }
 
     Box(Modifier.fillMaxSize().background(palette.background).testTag("home_root")) {
@@ -97,6 +99,16 @@ fun HomeScreen(
                                 .testTag("home_ask_button"),
                         ) {
                             Text("Ask", style = QNType.captionTinted, color = palette.textSecondary)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(palette.surface, RoundedCornerShape(12.dp))
+                                .qnPressable(onClick = { showLooseEnds = true; viewModel.scanLooseEnds() })
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .testTag("home_loose_ends_button"),
+                        ) {
+                            Text("Loose ends", style = QNType.captionTinted, color = palette.textSecondary)
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -234,6 +246,52 @@ fun HomeScreen(
                 }
             }
         }
+
+        if (showLooseEnds) {
+            val found = looseEnds
+            androidx.compose.ui.window.Dialog(onDismissRequest = { showLooseEnds = false; viewModel.dismissLooseEnds() }) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(palette.surface)
+                        .padding(18.dp)
+                        .testTag("loose_ends_dialog"),
+                ) {
+                    Text("Loose ends", style = QNType.title, color = palette.textPrimary)
+                    Spacer(Modifier.height(8.dp))
+                    when {
+                        found == null -> Text("Scanning your notes…", style = QNType.caption, color = palette.textTertiary)
+                        found.items.isEmpty() -> Text("Nothing hanging. You're cleaner than most inboxes.", style = QNType.body, color = palette.textSecondary)
+                        else -> found.items.forEach { end ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(end.text, style = QNType.body, color = palette.textPrimary, modifier = Modifier.weight(1f))
+                                Text(
+                                    "add",
+                                    style = QNType.captionTinted,
+                                    color = palette.accent,
+                                    modifier = Modifier
+                                        .qnPressable { viewModel.addLooseEndToEnd(end.noteId, end.text) }
+                                        .padding(start = 12.dp)
+                                        .testTag("loose_end_add"),
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Close",
+                        style = QNType.headline,
+                        color = palette.textTertiary,
+                        modifier = Modifier.align(Alignment.End).qnPressable { showLooseEnds = false; viewModel.dismissLooseEnds() }.testTag("loose_ends_close"),
+                    )
+                }
+            }
+        }
+
     }
 }
 

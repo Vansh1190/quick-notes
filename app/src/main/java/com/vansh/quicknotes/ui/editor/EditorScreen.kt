@@ -157,6 +157,36 @@ fun EditorScreen(
                 AiSheet(viewModel) { showAiSheet = false }
             }
         }
+
+        val snap by viewModel.snap.collectAsStateWithLifecycle()
+        snap?.let { s ->
+            Column(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 12.dp, start = 16.dp, end = 16.dp)
+                    .clip(QNShapes.card)
+                    .background(palette.surface)
+                    .padding(14.dp)
+                    .testTag("snap_banner"),
+            ) {
+                Text("Looks like a ${'$'}{s.snippet.kind}", style = QNType.captionTinted, color = palette.accent)
+                Spacer(Modifier.height(4.dp))
+                Text(s.snippet.display, style = QNType.caption, color = palette.textSecondary, maxLines = 5, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        Modifier.weight(1f).clip(QNShapes.pill).background(palette.card)
+                            .qnPressable { viewModel.dismissSnap() }.testTag("snap_dismiss"),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("Dismiss", style = QNType.captionTinted, color = palette.textSecondary) }
+                    Box(
+                        Modifier.weight(1f).clip(QNShapes.pill).background(palette.accent)
+                            .qnPressable { viewModel.acceptSnap(s.snippet.kind, s.snippet.fields) }.testTag("snap_add"),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("Add to note", style = QNType.captionTinted, color = palette.onAccent) }
+                }
+            }
+        }
     }
 
     if (showCamera) {
@@ -166,7 +196,7 @@ fun EditorScreen(
         ) {
             com.vansh.quicknotes.ui.camera.CameraScreen(
                 onDone = { files ->
-                    files.forEach { f -> runCatching { viewModel.addImage(f.readBytes()) } }
+                    files.forEach { f -> runCatching { viewModel.addImage(f.readBytes(), ocrForSnap = true) } }
                     showCamera = false
                 },
                 onCancel = { showCamera = false },
@@ -394,6 +424,16 @@ private fun LinkBlockView(block: Block) {
         if (!block.link?.title.isNullOrBlank()) {
             Spacer(Modifier.height(4.dp))
             Text(block.link?.url.orEmpty(), style = QNType.caption, color = palette.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        val essence = block.link?.essenceSummary
+        if (!essence.isNullOrBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text("In short", style = QNType.captionTinted, color = palette.accent, modifier = Modifier.testTag("link_essence_label"))
+            Spacer(Modifier.height(4.dp))
+            Text(essence, style = QNType.body, color = palette.textSecondary, modifier = Modifier.testTag("link_essence"))
+            block.link?.essencePoints?.forEach { point ->
+                Text("• $point", style = QNType.caption, color = palette.textSecondary)
+            }
         }
     }
 }

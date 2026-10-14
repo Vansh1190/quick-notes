@@ -66,6 +66,8 @@ data class LinkPayload(
     val siteName: String? = null,
     val thumbnailPath: String? = null,
     val fetched: Boolean = false,
+    val essenceSummary: String? = null,
+    val essencePoints: List<String> = emptyList(),
 )
 
 enum class BlockType(val wire: String) {

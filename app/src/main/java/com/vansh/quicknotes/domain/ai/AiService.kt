@@ -20,6 +20,8 @@ import kotlinx.serialization.json.put
  */
 class AiService(private val client: AiClient) {
 
+    fun isConfigured(): Boolean = client.isConfigured()
+
     // ---- 1. Dump & Sort -------------------------------------------------------------
 
     suspend fun dumpAndSort(dump: String, existingTitles: List<String>): List<ProposedList> {

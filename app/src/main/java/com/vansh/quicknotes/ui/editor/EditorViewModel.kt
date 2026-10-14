@@ -108,7 +108,7 @@ class EditorViewModel @Inject constructor(
         autoSave.edit()
     }
 
-    fun addImage(bytes: ByteArray, extension: String = "jpg"): String {
+    fun addImage(bytes: ByteArray, extension: String = "jpg", ocrForSnap: Boolean = false): String {
         val note = current ?: return ""
         val id = java.util.UUID.randomUUID().toString()
         viewModelScope.launch {
@@ -116,6 +116,12 @@ class EditorViewModel @Inject constructor(
             mutate { n ->
                 n.copy(blocks = n.blocks + Block(id = id, type = BlockType.IMAGE, orderIndex = n.blocks.size, image = ImagePayload(asset.id, asset.width ?: 0, asset.height ?: 0)))
             }
+            // Snap to Structure (spec §8.2/§5.3 Scan): only camera captures get OCR'd
+            if (!ocrForSnap) return@launch
+            val ocr = com.vansh.quicknotes.domain.ocr.OcrHelper.ocrJpeg(bytes) ?: return@launch
+            if (!ai.get().isConfigured()) return@launch
+            val snippet = runCatching { ai.get().snapToStructure(ocr) }.getOrNull() ?: return@launch
+            _snap.value = SnapState(snippet, ocr)
         }
         return id
     }
@@ -150,6 +156,15 @@ class EditorViewModel @Inject constructor(
             mutate { n ->
                 n.copy(blocks = n.blocks.map {
                     if (it.id == id && it.link != null) it.copy(link = it.link.copy(title = meta.title ?: it.link.title, siteName = meta.siteName ?: it.link.siteName, fetched = true)) else it
+                })
+            }
+            // Link Essence (spec §8.6): only when AI is configured and we got page text
+            val source = meta.rawText ?: meta.description ?: return@launch
+            if (!ai.get().isConfigured()) return@launch
+            val essence = runCatching { ai.get().linkEssence(url, source) }.getOrNull() ?: return@launch
+            mutate { n ->
+                n.copy(blocks = n.blocks.map {
+                    if (it.id == id && it.link != null) it.copy(link = it.link.copy(essenceSummary = essence.summary, essencePoints = essence.points)) else it
                 })
             }
         }
@@ -217,6 +232,34 @@ class EditorViewModel @Inject constructor(
             aiPreviewVersionId = repository.versions(note.id).firstOrNull { it.createdAt > versionsBefore }?.id
             applyCleanedText(cleaned)
             _aiState.value = AiState.Preview("Cleaned up", cleaned)
+        }
+    }
+
+    data class SnapState(
+        val snippet: com.vansh.quicknotes.domain.ai.AiService.Snippet,
+        val ocrText: String,
+    )
+
+    private val _snap = kotlinx.coroutines.flow.MutableStateFlow<SnapState?>(null)
+    val snap: kotlinx.coroutines.flow.StateFlow<SnapState?> = _snap.asStateFlow()
+
+    fun dismissSnap() { _snap.value = null }
+
+    fun acceptSnap(kind: String, fields: Map<String, String>) {
+        val note = current ?: return
+        _snap.value = null
+        val body = fields.entries.joinToString("\n") { (k, v) -> "$k: $v" }
+        when (kind) {
+            "contact", "event", "receipt" -> mutate { n ->
+                n.copy(
+                    blocks = n.blocks + Block(
+                        java.util.UUID.randomUUID().toString(),
+                        BlockType.TEXT,
+                        n.blocks.size,
+                        text = TextPayload(body),
+                    ),
+                )
+            }
         }
     }
 

@@ -9,6 +9,8 @@ data class LinkMetadata(
     val siteName: String? = null,
     val description: String? = null,
     val thumbnailUrl: String? = null,
+    /** visible text of the page, trimmed; fuel for Link Essence */
+    val rawText: String? = null,
 )
 
 /**
@@ -41,8 +43,17 @@ object HtmlMetaParser {
             siteName = site,
             description = desc,
             thumbnailUrl = image,
+            rawText = extractText(html)?.take(12_000),
         )
     }
+
+    private val scriptStyle = Regex("(?is)<(script|style)[^>]*>.*?</\\1>")
+    private val tags = Regex("(?is)<[^>]+>")
+
+    fun extractText(html: String): String? =
+        html.replace(scriptStyle, " ").replace(Regex("(?is)<br[^>]*>|</p>|</div>"), "\n")
+            .replace(tags, " ").replace(Regex("\\s+"), " ").trim()
+            .takeIf { it.length > 40 }
 
     private fun attrsOf(tag: String): Map<String, String> {
         val out = HashMap<String, String>()
