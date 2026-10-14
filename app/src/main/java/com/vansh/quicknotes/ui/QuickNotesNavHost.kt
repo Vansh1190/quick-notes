@@ -11,6 +11,9 @@ import androidx.navigation.navArgument
 import com.vansh.quicknotes.domain.ShareRouter
 import com.vansh.quicknotes.ui.editor.EditorScreen
 import com.vansh.quicknotes.ui.home.HomeScreen
+import com.vansh.quicknotes.ui.lists.ListsScreen
+import com.vansh.quicknotes.ui.onboarding.OnboardingScreen
+import com.vansh.quicknotes.ui.settings.SettingsScreen
 
 object Routes {
     const val HOME = "home"
@@ -64,6 +67,9 @@ fun QuickNotesNavHost(
         }
     }
     NavHost(navController = navController, startDestination = if (onboardingPending) Routes.ONBOARDING else Routes.HOME) {
+        composable(Routes.ONBOARDING) {
+            OnboardingScreen(onDone = { navController.navigate(Routes.HOME) })
+        }
         composable(Routes.HOME) {
             val recording = com.vansh.quicknotes.ui.voice.RememberRecordingController(noteId = null)
             HomeScreen(
@@ -81,6 +87,12 @@ fun QuickNotesNavHost(
                     com.vansh.quicknotes.ui.voice.RecordingSheetHost(recording)
                 }
             }
+        }
+        composable(Routes.LISTS) {
+            ListsScreen(onOpenList = { id -> navController.navigate(Routes.listDetail(id)) })
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.EDITOR,
