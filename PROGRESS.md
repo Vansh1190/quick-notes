@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 08:10 — M7b backup/export committed next: ZIP (lossless JSON rows + markdown/note + media/) with exact-restore import (note-row-first FK order fix caught by round-trip test). Settings UI wired. 117 tests. Then M7c release build.
+Heartbeat (UTC): 2026-10-14 08:55 — ALL MILESTONES DONE. M7c worker+signing committed; AAB 26MB signed; README + BUILD_REPORT + MANUAL_TESTS(45 items) written. Final gate + push.
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)
@@ -56,5 +56,17 @@ Heartbeat (UTC): 2026-10-14 08:10 — M7b backup/export committed next: ZIP (los
 - Tests 101 total (DatePhrase 6, Splitter 4, ListsRepo 7, M5 flow 4). Evidence docs/evidence/m5-lists.png.
 - Robolectric lesson: Dialog-internal weight() click targets have zero bounds in JVM harness → click real widgets where possible, drive VM otherwise; device check in MANUAL_TESTS #23-32.
 
-## Next
-- M6: AI settings + test button, AiClient (OpenAI-compat), features 1-8 via same preview→confirm contract, WorkManager queue, undo (≥10 s) + version history for AI edits.
+## Done (M7 Polish + release)
+- Onboarding: 3 pager pages, dots, skip/done, settings-gated start destination.
+- Backup: ZIP export (lossless rows JSON + markdown/note + media bytes + manifest), exact
+  import w/ skip-existing (round-trip test w/ real JPEG bytes; caught FK note-row-first bug),
+  Settings UI w/ SAF OpenDocument picker, markdown share helper.
+- Daily Recap worker: Hilt worker via Configuration.Provider, daily 19:05 anchor, stores recap
+  in Settings so Home reuses one AI pass/day; upcomingDueBetween for tomorrow items.
+- Release: keystore OUTSIDE repo, creds via gitignored local.properties, R8 minify + resource
+  shrink, V2-signed APK (45MB) + AAB (26MB), apksigner verified.
+- Docs: README, BUILD_REPORT (honest gaps), MANUAL_TESTS grown to 45 items.
+
+## Status: COMPLETE
+- 117 tests green, lint 0 errors, signed APK + AAB. Device-only behaviors await a real phone
+  (MANUAL_TESTS.md). Push pending repo access for the PAT.

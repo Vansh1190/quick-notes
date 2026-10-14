@@ -64,3 +64,31 @@ states what to do and what you should see.
     → Sort → shows Groceries / Work / Personal preview cards → edit/remove items → Done creates
     the lists. Nothing is written until Done. Cancel writes nothing.
 32. After reboot, pending item reminders still fire (BootReceiver re-arms).
+
+## M6 — AI
+33. Settings → AI: enter base URL / key / model, tap "Test connection" → green ✓ OK (offline
+    shows a readable ✗, never a crash). Key field shows ••• after save (Keystore-backed).
+34. Editor → sparkle "AI" → "Tidy this up": thinking… → preview card → "Keep it" applies,
+    "Undo" restores the exact prior text. Note stays editable during/after.
+35. AI "Title + tags": title swaps and tags appear; note still saves normally.
+36. Ask My Notes (Home → "Ask"): answer cites notes, "open" jumps to the cited note.
+37. Loose ends (Home → "Loose ends"): list of hanging tasks; "add" appends to that note's
+    checklist (creates one if missing).
+38. Daily Recap: after 19:00 local (or force via worker), Home shows a "Today" card with a
+    calm 3-6 sentence recap; only one AI call per day (reopening Home must not re-summarize).
+39. Link Essence: paste a real article link → card gains "In short" summary + bullet points.
+40. Snap to Structure: camera → photo of a contact card/receipt → top banner proposes fields →
+    "Add to note" inserts structured text. Plain photos: no banner.
+41. AI offline: airplane mode → every AI action fails with a friendly ✗/Thinking… timeout, no
+    crashes, no partial writes.
+
+## M7 — Onboarding / backup / release
+42. First launch (or clear data): 3 onboarding pages with animated dots; Skip or
+    "Start capturing" lands on Home; second launch goes straight to Home.
+43. Export ZIP (Settings → Backup): file lands in Android/data/com.vansh.quicknotes/files/
+    backups/ (share sheet works); unzipped it has note.json, manifest.json, markdown/*.md,
+    media/... including voice/image bytes.
+44. Import on a fresh install (clear data → Import ZIP → pick file): notes, pins, archives,
+    trash, tags, drawings, voice notes reappear exactly (same dates); re-importing the same
+    ZIP says "0 imported (N already existed)".
+45. Release build installs and runs from the signed APK (apksigner verified V2, CN=Quick Notes).
