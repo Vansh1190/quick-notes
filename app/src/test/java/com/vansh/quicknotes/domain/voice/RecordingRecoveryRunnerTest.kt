@@ -37,7 +37,7 @@ class RecordingRecoveryRunnerTest {
             .setQueryExecutor(inline)
             .setTransactionExecutor(inline)
             .build()
-        repository = NotesRepository(db.noteDao(), FakeNoteSearchIndex())
+        repository = NotesRepository(db.noteDao(), db.tagDao(), db.versionDao(), FakeNoteSearchIndex())
         mediaStore = MediaStore(context, db.noteDao())
         runner = RecordingRecoveryRunner(mediaStore, repository)
     }

@@ -68,7 +68,7 @@ class M1NotesFlowTest {
             .setQueryExecutor(inlineExecutor)
             .setTransactionExecutor(inlineExecutor)
             .build()
-        repository = NotesRepository(db.noteDao(), FakeNoteSearchIndex())
+        repository = NotesRepository(db.noteDao(), db.tagDao(), db.versionDao(), FakeNoteSearchIndex())
         mediaStore = MediaStore(context, db.noteDao())
     }
 

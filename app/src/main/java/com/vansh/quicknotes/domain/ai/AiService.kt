@@ -1,19 +1,19 @@
 package com.vansh.quicknotes.domain.ai
 
-import com.vansh.quicknotes.domain.lists.DatePhraseParser
 import com.vansh.quicknotes.domain.lists.ProposedItem
 import com.vansh.quicknotes.domain.lists.ProposedList
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 /**
- * Feature layer (spec §8). Every feature = prompt → strict JSON parse → preview object the
+ * Feature layer (spec §8). Every feature = prompt -> strict JSON parse -> preview object the
  * UI shows before anything is written (principle 3: AI assists, never surprises). Parsing is
  * defensive: a malformed reply degrades to the v1 heuristic stubs, never a crash and never a
  * half-applied edit.
@@ -25,19 +25,18 @@ class AiService(private val client: AiClient) {
     suspend fun dumpAndSort(dump: String, existingTitles: List<String>): List<ProposedList> {
         val prompt = """
             You organize a brain-dump into todo lists. Reply with ONLY a JSON array, no prose:
-            [{"title":"Groceries","items":[{"text":"milk","due":"FRIDAY 18:00"}]}]
+            [{"title":"Groceries","items":[{"text":"milk"},{"text":"eggs"}]}]
             Rules:
             - Split the dump into 1-5 sensible lists; reuse an existing list title (exact string)
               when the items belong there. Existing lists: ${existingTitles.joinToString("; ").ifBlank { "(none)" }}
             - Keep item text short and imperative ("buy milk", "send invoice to Rahul").
-            - Convert any date/time phrase into a concrete "DAY HH:MM" hint if obvious, else omit "due".
             - Language: keep items in the user's language (English/Hindi/Hinglish as spoken).
             Dump:
             $dump
         """.trimIndent()
         return try {
             val result = client.chat(listOf(ChatMessage("user", prompt)), jsonMode = true)
-            val array = JsonExtractor.firstJson(result.content) as? JsonArray ?: error("no array")
+            val array = JsonExtractor.firstJson(result.content) as? JsonArray ?: return emptyList()
             array.mapNotNull { el ->
                 val o = el as? JsonObject ?: return@mapNotNull null
                 val title = JsonExtractor.str(o, "title") ?: return@mapNotNull null
@@ -47,7 +46,7 @@ class AiService(private val client: AiClient) {
                     text?.takeIf { it.isNotBlank() }?.let { ProposedItem(text.trim()) }
                 }.orEmpty()
                 if (items.isEmpty()) null else ProposedList(title.trim(), items)
-            }.ifEmpty { error("empty") }
+            }
         } catch (t: Throwable) {
             emptyList()
         }
@@ -77,7 +76,7 @@ class AiService(private val client: AiClient) {
         }
     }
 
-    // ---- 4. Clean Up (transcript/rough text → tidy prose) ---------------------------
+    // ---- 4. Clean Up (transcript/rough text -> tidy prose) ----------------------------
 
     suspend fun cleanUp(text: String, mode: String = "tidy"): String? {
         val instruction = when (mode) {
@@ -94,7 +93,7 @@ class AiService(private val client: AiClient) {
         }
     }
 
-    // ---- 6. Link Essence ------------------------------------------------------------
+    // ---- 6. Link Essence --------------------------------------------------------------
 
     data class LinkEssence(val summary: String, val points: List<String>)
 
@@ -117,12 +116,11 @@ class AiService(private val client: AiClient) {
         }
     }
 
-    // ---- 3. Ask My Notes ------------------------------------------------------------
+    // ---- 3. Ask My Notes --------------------------------------------------------------
 
     data class AnswerWithCites(val answer: String, val noteIds: List<String>)
 
     suspend fun askMyNotes(question: String, context: List<Pair<String, String>>): AnswerWithCites? {
-        // context: noteId+title → snippet
         val block = context.joinToString("\n\n") { (idTitle, snippet) -> "[$idTitle]\n$snippet" }
         val prompt = """
             Answer using ONLY the note excerpts. Reply ONLY JSON:
@@ -142,12 +140,11 @@ class AiService(private val client: AiClient) {
         }
     }
 
-    // ---- 7. Loose Ends --------------------------------------------------------------
+    // ---- 7. Loose Ends ----------------------------------------------------------------
 
     data class LooseEnd(val text: String, val noteId: String)
 
     suspend fun looseEnds(notes: List<Triple<String, String, String>>): List<LooseEnd> {
-        // notes: noteId, title, bodySnippet
         val block = notes.joinToString("\n\n") { (id, title, body) -> "[$id] $title\n${body.take(600)}" }
         val prompt = """
             Find unfinished obligations in these notes: phrases like "need to", "should", "must",
@@ -169,7 +166,7 @@ class AiService(private val client: AiClient) {
         }
     }
 
-    // ---- 2. Snap to Structure --------------------------------------------------------
+    // ---- 2. Snap to Structure ----------------------------------------------------------
 
     data class Snippet(val kind: String, val fields: Map<String, String>, val display: String)
 
@@ -195,17 +192,17 @@ class AiService(private val client: AiClient) {
         }
     }
 
-    // ---- 8. Daily Recap ---------------------------------------------------------------
+    // ---- 8. Daily Recap ------------------------------------------------------------------
 
     suspend fun dailyRecap(todayCaptures: List<Pair<String, String>>, tomorrowDue: List<String>): String? {
-        val prompt = """
-            Write a calm daily recap for the user. 3-6 short sentences, plain text, no markdown.
-            First what they captured today, then what's due tomorrow. No advice they didn't ask for.
-            Captured today (title — snippet):
-            ${todayCaptures.joinToString("\n") { (t, s) -> "- $t — ${s.take(120)}" }.ifBlank { "- (nothing) (say so lightly)"}}
-            Due tomorrow:
-            ${tomorrowDue.joinToString("\n") { "- $it" }.ifBlank { "- (nothing)"}}
-        """.trimIndent()
+        val prompt = buildString {
+            appendLine("Write a calm daily recap for the user. 3-6 short sentences, plain text, no markdown.")
+            appendLine("First what they captured today, then what is due tomorrow. No unsolicited advice.")
+            appendLine("Captured today (title - snippet):")
+            appendLine(todayCaptures.joinToString("\n") { (t, s) -> "- $t - ${s.take(120)}" }.ifBlank { "- (nothing - say so lightly)" })
+            appendLine("Due tomorrow:")
+            appendLine(tomorrowDue.joinToString("\n") { "- $it" }.ifBlank { "- (nothing)" })
+        }
         return try {
             client.chat(listOf(ChatMessage("user", prompt)), maxTokens = 400).content.ifBlank { null }
         } catch (t: Throwable) {
@@ -213,8 +210,6 @@ class AiService(private val client: AiClient) {
         }
     }
 
-    suspend fun testConnection(): String {
-        val r = client.chat(listOf(ChatMessage("user", "Reply with exactly: OK")), maxTokens = 30)
-        return r.content
-    }
+    suspend fun testConnection(): String =
+        client.chat(listOf(ChatMessage("user", "Reply with exactly: OK")), maxTokens = 30).content
 }

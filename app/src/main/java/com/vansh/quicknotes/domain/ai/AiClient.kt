@@ -30,7 +30,13 @@ class AiException(message: String, val offline: Boolean = false, val status: Int
 
 data class ChatMessage(val role: String, val content: String)
 
-data class ChatResult(val content: String, val finishReason: String?, val usageTokens: Int?)
+data class ChatResult(
+    val content: String,
+    val finishReason: String?,
+    val usageTokens: Int?,
+    /** JSON arguments of the first tool call, when the model answered via a tool */
+    val toolArgs: JsonObject? = null,
+)
 
 interface AiClient {
     suspend fun chat(
@@ -38,6 +44,9 @@ interface AiClient {
         temperature: Double = 0.3,
         maxTokens: Int = 900,
         jsonMode: Boolean = false,
+        toolName: String? = null,
+        toolDescription: String = "",
+        toolSchema: JsonObject? = null,
     ): ChatResult
 
     fun isConfigured(): Boolean
@@ -50,7 +59,25 @@ private data class ChatRequest(
     val temperature: Double,
     @kotlinx.serialization.SerialName("max_tokens") val maxTokens: Int,
     @kotlinx.serialization.SerialName("response_format") val responseFormat: ResponseFormatDto? = null,
+    val tools: List<ToolDto>? = null,
+    @kotlinx.serialization.SerialName("tool_choice") val toolChoice: ToolChoiceDto? = null,
 )
+
+@Serializable
+private data class ToolDto(val type: String = "function", val function: ToolFunctionDto)
+
+@Serializable
+private data class ToolFunctionDto(
+    val name: String,
+    val description: String,
+    val parameters: JsonObject,
+)
+
+@Serializable
+private data class ToolChoiceDto(val type: String = "function", val function: ToolChoiceFnDto)
+
+@Serializable
+private data class ToolChoiceFnDto(val name: String)
 
 @Serializable
 private data class ChatMessageDto(val role: String, val content: String)
@@ -69,7 +96,14 @@ private data class ChatResponseDto(
 private data class ChoiceDto(
     val message: MessageDto? = null,
     @kotlinx.serialization.SerialName("finish_reason") val finishReason: String? = null,
+    @kotlinx.serialization.SerialName("tool_calls") val toolCalls: List<ToolCallDto>? = null,
 )
+
+@Serializable
+private data class ToolCallDto(val function: ToolFunctionCallDto? = null)
+
+@Serializable
+private data class ToolFunctionCallDto(val name: String? = null, val arguments: String? = null)
 
 @Serializable
 private data class MessageDto(
@@ -93,6 +127,9 @@ class HttpAiClient(
         temperature: Double,
         maxTokens: Int,
         jsonMode: Boolean,
+        toolName: String?,
+        toolDescription: String,
+        toolSchema: JsonObject?,
     ): ChatResult = withContext(Dispatchers.IO) {
         val base = baseUrl().trimEnd('/')
         val key = apiKey()
@@ -105,6 +142,10 @@ class HttpAiClient(
                 temperature = temperature,
                 maxTokens = maxTokens,
                 responseFormat = if (jsonMode) ResponseFormatDto("json_object") else null,
+                tools = toolName?.let {
+                    listOf(ToolDto(function = ToolFunctionDto(it, toolDescription, toolSchema ?: JsonObject(emptyMap()))))
+                },
+                toolChoice = toolName?.let { ToolChoiceDto(function = ToolChoiceFnDto(it)) },
             ),
         )
         val connection = try {
@@ -139,8 +180,11 @@ class HttpAiClient(
             val choice = dto.choices.firstOrNull()
             val raw = choice?.message?.content.orEmpty().ifBlank { choice?.message?.reasoningContent.orEmpty() }
             val cleaned = normalizeReasoning(raw)
-            if (cleaned.isBlank()) throw AiException("The AI returned nothing usable")
-            ChatResult(cleaned, choice?.finishReason, dto.usage?.totalTokens)
+            val toolArgs = choice?.toolCalls?.firstOrNull()?.function?.arguments?.let { args ->
+                runCatching { Json.parseToJsonElement(args) as? JsonObject }.getOrNull()
+            }
+            if (cleaned.isBlank() && toolArgs == null) throw AiException("The AI returned nothing usable")
+            ChatResult(cleaned, choice?.finishReason, dto.usage?.totalTokens, toolArgs)
         } catch (e: AiException) {
             throw e
         } catch (t: java.net.SocketTimeoutException) {

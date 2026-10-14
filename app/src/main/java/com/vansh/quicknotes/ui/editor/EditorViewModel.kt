@@ -36,7 +36,20 @@ class EditorViewModel @Inject constructor(
     private val repository: NotesRepository,
     private val mediaStore: MediaStore,
     private val linkFetcher: LinkFetcher,
+    private val ai: dagger.Lazy<com.vansh.quicknotes.domain.ai.AiService>,
 ) : ViewModel() {
+
+    sealed interface AiState {
+        data object Idle : AiState
+        data object Busy : AiState
+        data class Preview(val label: String, val newText: String) : AiState
+        data object Undone : AiState
+        data class Failed(val message: String) : AiState
+    }
+
+    private val _aiState = kotlinx.coroutines.flow.MutableStateFlow<AiState>(AiState.Idle)
+    val aiState: kotlinx.coroutines.flow.StateFlow<AiState> = _aiState.asStateFlow()
+    private var aiPreviewVersionId: String? = null
 
     private val noteId: String = savedStateHandle.get<String>("noteId") ?: ""
     private val mutex = Mutex()
@@ -183,6 +196,81 @@ class EditorViewModel @Inject constructor(
 
     fun flushSave() {
         viewModelScope.launch { autoSave.flush() }
+    }
+
+    /** Spec §8 feature 4: transcript/rough text -> tidy note (preview first, undo after). */
+    fun aiCleanUp(mode: String = "tidy") {
+        val note = current ?: return
+        _aiState.value = AiState.Busy
+        viewModelScope.launch {
+            val body = com.vansh.quicknotes.data.repository.SearchableText.withMedia(
+                note.blocks,
+                emptyList(),
+            )
+            val cleaned = runCatching { ai.get().cleanUp(body, mode) }.getOrNull()
+            if (cleaned.isNullOrBlank()) {
+                _aiState.value = AiState.Failed("Couldn't reach the AI")
+                return@launch
+            }
+            val versionsBefore = repository.versions(note.id).maxOfOrNull { it.createdAt } ?: 0L
+            repository.snapshotForAi(note.id, "cleanup:$mode")
+            aiPreviewVersionId = repository.versions(note.id).firstOrNull { it.createdAt > versionsBefore }?.id
+            applyCleanedText(cleaned)
+            _aiState.value = AiState.Preview("Cleaned up", cleaned)
+        }
+    }
+
+    fun aiDismissPreview() {
+        val versionId = aiPreviewVersionId
+        aiPreviewVersionId = null
+        _aiState.value = AiState.Idle
+        if (versionId != null) {
+            viewModelScope.launch { repository.restoreVersion(versionId) }
+        }
+    }
+
+    fun aiAcceptPreview() {
+        aiPreviewVersionId = null
+        _aiState.value = AiState.Idle
+    }
+
+    /** Spec §8 feature 5: AI title + tags, one-tap accept. */
+    fun aiTitleAndTags(onResult: (title: String, tags: List<String>) -> Unit) {
+        val note = current ?: return
+        viewModelScope.launch {
+            val body = com.vansh.quicknotes.data.repository.SearchableText.fromBlocks(note.blocks)
+            val tt = runCatching { ai.get().titleAndTags(body) }.getOrNull()
+            if (tt == null) {
+                _aiState.value = AiState.Failed("Couldn't reach the AI")
+            } else {
+                repository.applyAiTitleAndTags(note.id, tt.title, tt.tags)
+                current = note.copy(title = tt.title)
+                _state.value = EditorUiState(note = current, loaded = true)
+                onResult(tt.title, tt.tags)
+            }
+        }
+    }
+
+    private fun applyCleanedText(text: String) {
+        val note = current ?: return
+        val textBlocks = note.blocks.filter { it.type == BlockType.TEXT }
+        if (textBlocks.isEmpty()) {
+            mutate { n -> n.copy(blocks = n.blocks + Block(java.util.UUID.randomUUID().toString(), BlockType.TEXT, n.blocks.size, text = TextPayload(text))) }
+            return
+        }
+        // replace the first text block with the cleaned whole-note text; drop the other text blocks
+        val firstId = textBlocks.first().id
+        mutate { n ->
+            n.copy(
+                blocks = n.blocks.mapNotNull { b ->
+                    when {
+                        b.id == firstId -> b.copy(text = TextPayload(text))
+                        b.type == BlockType.TEXT -> null
+                        else -> b
+                    }
+                },
+            )
+        }
     }
 
     override fun onCleared() {

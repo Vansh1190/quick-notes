@@ -5,6 +5,7 @@ import com.vansh.quicknotes.data.local.MediaAssetEntity
 import com.vansh.quicknotes.data.local.NoteDao
 import com.vansh.quicknotes.data.local.NoteEntity
 import com.vansh.quicknotes.data.local.NoteSearchIndex
+import com.vansh.quicknotes.data.local.TagDao
 import com.vansh.quicknotes.domain.model.Block
 import com.vansh.quicknotes.domain.model.BlockType
 import com.vansh.quicknotes.domain.model.ChecklistBlockPayload
@@ -69,6 +70,8 @@ object SearchableText {
 @Singleton
 class NotesRepository @Inject constructor(
     private val dao: NoteDao,
+    private val tagDao: TagDao,
+    private val versionDao: com.vansh.quicknotes.data.local.VersionDao,
     private val searchIndex: NoteSearchIndex,
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -135,6 +138,38 @@ class NotesRepository @Inject constructor(
         val firstLine = note.blocks.firstOrNull { it.type == BlockType.TEXT }?.text?.text
             ?.lineSequence()?.firstOrNull()?.trim().orEmpty()
         return firstLine.take(120)
+    }
+
+    /** Snapshot the whole note before an AI edit so undo/version history works (spec §8). */
+    suspend fun snapshotForAi(noteId: String, label: String) {
+        val note = loadNote(noteId) ?: return
+        versionDao.insert(
+            com.vansh.quicknotes.data.local.NoteVersionEntity(
+                id = newId(),
+                noteId = noteId,
+                createdAt = now(),
+                label = label,
+                snapshot = json.encodeToString(Note.serializer(), note),
+            ),
+        )
+        versionDao.trim(noteId, 20)
+    }
+
+    suspend fun restoreVersion(versionId: String): String? {
+        val version = versionDao.byId(versionId) ?: return null
+        val note = runCatching { json.decodeFromString(Note.serializer(), version.snapshot) }.getOrNull() ?: return null
+        saveNoteInternal(note.copy(updatedAt = now()))
+        return note.id
+    }
+
+    suspend fun versions(noteId: String): List<com.vansh.quicknotes.data.local.NoteVersionEntity> =
+        versionDao.recent(noteId)
+
+    /** apply AI title/tags: title wins over derived, tags are appended (max 6 total) */
+    suspend fun applyAiTitleAndTags(noteId: String, title: String, tags: List<String>) {
+        val existing = tagDao.tagsFor(noteId).map { it.name }
+        tagDao.linkAll(noteId, (existing + tags).distinct().take(6))
+        dao.setTitle(noteId, title.trim(), now())
     }
 
     suspend fun setPinned(id: String, pinned: Boolean) = dao.setPinned(id, pinned, now())

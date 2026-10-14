@@ -56,8 +56,9 @@ class Fts5SearchIndex(private val dao: SearchDao) : NoteSearchIndex {
         MediaAssetEntity::class,
         TodoListEntity::class,
         TodoItemEntity::class,
+        NoteVersionEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class QuickNotesDatabase : RoomDatabase() {
@@ -66,6 +67,10 @@ abstract class QuickNotesDatabase : RoomDatabase() {
     abstract fun searchDao(): SearchDao
 
     abstract fun todoDao(): TodoDao
+
+    abstract fun versionDao(): VersionDao
+
+    abstract fun tagDao(): TagDao
 
     val searchIndex: NoteSearchIndex by lazy { Fts5SearchIndex(searchDao()) }
 
@@ -85,6 +90,17 @@ abstract class QuickNotesDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_todo_items_listId ON todo_items(listId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_todo_items_dueAt ON todo_items(dueAt)")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS note_versions (" +
+                        "id TEXT NOT NULL PRIMARY KEY, noteId TEXT NOT NULL, createdAt INTEGER NOT NULL, " +
+                        "label TEXT NOT NULL, snapshot TEXT NOT NULL)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_note_versions_noteId ON note_versions(noteId)")
             }
         }
 
@@ -112,7 +128,7 @@ abstract class QuickNotesDatabase : RoomDatabase() {
         fun build(context: Context): QuickNotesDatabase =
             Room.databaseBuilder(context, QuickNotesDatabase::class.java, "quicknotes.db")
                 .addCallback(callback)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

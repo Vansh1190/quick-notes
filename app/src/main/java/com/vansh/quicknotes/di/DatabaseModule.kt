@@ -27,6 +27,12 @@ object DatabaseModule {
     fun todoDao(db: QuickNotesDatabase): com.vansh.quicknotes.data.local.TodoDao = db.todoDao()
 
     @Provides
+    fun versionDao(db: QuickNotesDatabase): com.vansh.quicknotes.data.local.VersionDao = db.versionDao()
+
+    @Provides
+    fun tagDao(db: QuickNotesDatabase): com.vansh.quicknotes.data.local.TagDao = db.tagDao()
+
+    @Provides
     fun searchIndex(db: QuickNotesDatabase): NoteSearchIndex = db.searchIndex
 
     @Provides
@@ -45,6 +51,11 @@ object DatabaseModule {
         settings: com.vansh.quicknotes.data.settings.SettingsRepository,
     ): com.vansh.quicknotes.domain.voice.Transcriber =
         if (settings.current().serverTranscription) server else stub
+
+    @Provides
+    @Singleton
+    fun aiService(client: com.vansh.quicknotes.domain.ai.AiClient): com.vansh.quicknotes.domain.ai.AiService =
+        com.vansh.quicknotes.domain.ai.AiService(client)
 
     @Provides
     @Singleton

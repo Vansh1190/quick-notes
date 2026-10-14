@@ -36,7 +36,7 @@ class NotesRepositoryTest {
             .setQueryExecutor(java.util.concurrent.Executor { it.run() })
             .setTransactionExecutor(java.util.concurrent.Executor { it.run() })
             .build()
-        repo = NotesRepository(db.noteDao(), FakeNoteSearchIndex())
+        repo = NotesRepository(db.noteDao(), db.tagDao(), db.versionDao(), FakeNoteSearchIndex())
     }
 
     @After
