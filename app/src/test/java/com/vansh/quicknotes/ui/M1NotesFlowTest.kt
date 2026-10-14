@@ -112,7 +112,7 @@ class M1NotesFlowTest {
                 HomeScreen(
                     onOpenNote = {},
                     onNewNote = {},
-                    viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy),
+                    viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy, com.vansh.quicknotes.data.settings.SettingsRepository(ApplicationProvider.getApplicationContext(), com.vansh.quicknotes.crypto.SecretStore(ApplicationProvider.getApplicationContext()))),
                 )
             }
         }
@@ -130,7 +130,7 @@ class M1NotesFlowTest {
     fun `empty home shows the first-run message`() {
         composeRule.setContent {
             QuickNotesTheme {
-                HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy))
+                HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy, com.vansh.quicknotes.data.settings.SettingsRepository(ApplicationProvider.getApplicationContext(), com.vansh.quicknotes.crypto.SecretStore(ApplicationProvider.getApplicationContext()))))
             }
         }
         settle()

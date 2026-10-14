@@ -120,6 +120,9 @@ class ListsRepository @Inject constructor(
 
     suspend fun purgeDone(listId: String) = dao.deleteDoneIn(listId)
 
+    suspend fun upcomingDueBetween(from: Long, to: Long): List<String> =
+        dao.upcomingDueBetween(from, to).map { it.text }
+
     suspend fun deleteList(list: TodoListEntity) {
         dao.deleteList(list)
     }

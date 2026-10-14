@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
         routeExtras(intent)
         handleIntent(intent)
         ShortcutPublisher.publish(this)
+        com.vansh.quicknotes.service.RecapScheduler.schedule(this)
         lifecycleScope.launch {
             onboardingPending.value = settings.settings.first().onboardingDone != true
         }

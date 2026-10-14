@@ -42,6 +42,7 @@ sealed interface AskState {
 class HomeViewModel @Inject constructor(
     private val repository: NotesRepository,
     private val ai: dagger.Lazy<com.vansh.quicknotes.domain.ai.AiService>,
+    private val settings: com.vansh.quicknotes.data.settings.SettingsRepository,
 ) : ViewModel() {
 
     private val _askState = MutableStateFlow<AskState>(AskState.Idle)
@@ -143,14 +144,22 @@ class HomeViewModel @Inject constructor(
                 set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
                 set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
             }.timeInMillis
+            // worker's stored recap for today wins: one AI pass per day, not per Home open
+            val stored = settings.settings.first()
+            if (!force && stored.dailyRecap != null) {
+                _recap.value = stored.dailyRecap
+                return@launch
+            }
             val todays = repository.observeActiveNotes().first().filter { it.updatedAt >= today }.take(6)
             if (todays.isEmpty() && !force) return@launch
-            _recap.value = _recap.value
             val captures = todays.mapNotNull { e -> repository.loadNote(e.id)?.let { it.title to SearchableText.fromBlocks(it.blocks) } }
             if (captures.isEmpty()) return@launch
             _recap.value = null
             val text = runCatching { ai.get().dailyRecap(captures.map { it.first to it.second.take(140) }, emptyList()) }.getOrNull()
-            if (text != null) _recap.value = text
+            if (text != null) {
+                _recap.value = text
+                settings.setDailyRecap(text, today)
+            }
         }
     }
 

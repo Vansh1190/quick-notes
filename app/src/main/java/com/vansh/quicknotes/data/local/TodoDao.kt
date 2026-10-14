@@ -45,6 +45,9 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items WHERE dueAt IS NOT NULL AND done = 0 AND dueAt > :now ORDER BY dueAt ASC")
     suspend fun upcomingDue(now: Long): List<TodoItemEntity>
 
+    @Query("SELECT * FROM todo_items WHERE dueAt IS NOT NULL AND done = 0 AND dueAt BETWEEN :from AND :to ORDER BY dueAt ASC")
+    suspend fun upcomingDueBetween(from: Long, to: Long): List<TodoItemEntity>
+
     @Query("SELECT * FROM todo_items WHERE listId = :listId ORDER BY orderIndex ASC")
     fun observeItems(listId: String): Flow<List<TodoItemEntity>>
 

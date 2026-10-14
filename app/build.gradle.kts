@@ -1,9 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+val qnProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { stream -> load(stream) }
 }
 
 android {
@@ -23,12 +30,24 @@ android {
         localeFilters += listOf("en", "hi")
     }
 
+    signingConfigs {
+        create("release") {
+            if (qnProps.getProperty("qnKeystorePath") != null) {
+                storeFile = file(qnProps.getProperty("qnKeystorePath"))
+                storePassword = qnProps.getProperty("QN_KEYSTORE_PASS")
+                keyAlias = qnProps.getProperty("qnKeystoreAlias")
+                keyPassword = qnProps.getProperty("QN_KEYSTORE_PASS")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

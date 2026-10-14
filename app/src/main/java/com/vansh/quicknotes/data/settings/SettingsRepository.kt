@@ -31,6 +31,8 @@ class SettingsRepository @Inject constructor(
         val accentArgb = longPreferencesKey("accent_argb")
         val reduceMotion = booleanPreferencesKey("reduce_motion")
         val onboardingDone = booleanPreferencesKey("onboarding_done")
+        val dailyRecap = stringPreferencesKey("daily_recap")
+        val dailyRecapDay = longPreferencesKey("daily_recap_day")
         val featurePrefix = "ai_feature_"
     }
 
@@ -43,6 +45,7 @@ class SettingsRepository @Inject constructor(
         val accentArgb: Long = 0xFFFFD60AL,
         val reduceMotion: Boolean = false,
         val onboardingDone: Boolean = false,
+        val dailyRecap: String? = null,
         val featureEnabled: (String) -> Boolean = { true },
     )
 
@@ -56,6 +59,7 @@ class SettingsRepository @Inject constructor(
             accentArgb = prefs[Keys.accentArgb] ?: 0xFFFFD60AL,
             reduceMotion = prefs[Keys.reduceMotion] == true,
             onboardingDone = prefs[Keys.onboardingDone] == true,
+            dailyRecap = prefs[Keys.dailyRecap],
             featureEnabled = { feature -> prefs[androidx.datastore.preferences.core.booleanPreferencesKey(Keys.featurePrefix + feature)] ?: true },
         )
     }
@@ -71,5 +75,13 @@ class SettingsRepository @Inject constructor(
     suspend fun setAccent(argb: Long) = context.dataStore.edit { it[Keys.accentArgb] = argb }
     suspend fun setReduceMotion(v: Boolean) = context.dataStore.edit { it[Keys.reduceMotion] = v }
     suspend fun setOnboardingDone(v: Boolean) = context.dataStore.edit { it[Keys.onboardingDone] = v }
+
+    suspend fun setDailyRecap(text: String?, dayStartMillis: Long) = context.dataStore.edit {
+        if (text == null) {
+            it.remove(Keys.dailyRecap); it.remove(Keys.dailyRecapDay)
+        } else {
+            it[Keys.dailyRecap] = text; it[Keys.dailyRecapDay] = dayStartMillis
+        }
+    }
     suspend fun setFeature(feature: String, enabled: Boolean) = context.dataStore.edit { it[booleanPreferencesKey(Keys.featurePrefix + feature)] = enabled }
 }

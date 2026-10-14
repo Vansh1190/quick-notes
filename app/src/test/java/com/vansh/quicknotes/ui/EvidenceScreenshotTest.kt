@@ -113,7 +113,7 @@ class EvidenceScreenshotTest {
         composeRule.setContent {
             Box(Modifier.testTag("shot_root")) {
                 QuickNotesTheme(darkTheme = false) {
-                    HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy))
+                    HomeScreen(onOpenNote = {}, onNewNote = {}, viewModel = HomeViewModel(repository, com.vansh.quicknotes.TestDoubles.OfflineAiLazy, com.vansh.quicknotes.data.settings.SettingsRepository(ApplicationProvider.getApplicationContext(), com.vansh.quicknotes.crypto.SecretStore(ApplicationProvider.getApplicationContext()))))
                 }
             }
         }
