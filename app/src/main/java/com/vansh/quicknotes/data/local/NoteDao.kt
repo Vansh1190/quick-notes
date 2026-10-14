@@ -90,6 +90,12 @@ interface NoteDao {
     @Query("SELECT * FROM media_assets WHERE noteId = :noteId ORDER BY createdAt ASC")
     suspend fun mediaForNote(noteId: String): List<MediaAssetEntity>
 
+    @Query("SELECT * FROM media_assets WHERE id = :id")
+    suspend fun mediaById(id: String): MediaAssetEntity?
+
+    @Query("DELETE FROM media_assets WHERE id = :id")
+    suspend fun deleteMediaById(id: String)
+
     @Upsert
     suspend fun upsertMedia(asset: MediaAssetEntity)
 

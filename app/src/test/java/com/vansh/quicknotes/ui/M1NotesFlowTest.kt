@@ -14,7 +14,9 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.vansh.quicknotes.data.local.FakeNoteSearchIndex
 import com.vansh.quicknotes.data.local.QuickNotesDatabase
+import com.vansh.quicknotes.data.media.MediaStore
 import com.vansh.quicknotes.data.repository.NotesRepository
+import com.vansh.quicknotes.domain.LinkFetcher
 import com.vansh.quicknotes.ui.design.QuickNotesTheme
 import com.vansh.quicknotes.ui.editor.EditorScreen
 import com.vansh.quicknotes.ui.editor.EditorViewModel
@@ -55,6 +57,7 @@ class M1NotesFlowTest {
 
     private lateinit var db: QuickNotesDatabase
     private lateinit var repository: NotesRepository
+    private lateinit var mediaStore: MediaStore
 
     @Before
     fun setUp() {
@@ -66,6 +69,7 @@ class M1NotesFlowTest {
             .setTransactionExecutor(inlineExecutor)
             .build()
         repository = NotesRepository(db.noteDao(), FakeNoteSearchIndex())
+        mediaStore = MediaStore(context, db.noteDao())
     }
 
     @After
@@ -79,9 +83,9 @@ class M1NotesFlowTest {
         composeRule.setContent {
             QuickNotesTheme {
                 editorVm = androidx.compose.runtime.remember {
-                    EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository)
+                    EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, LinkFetcher())
                 }
-                EditorScreen(onBack = {}, viewModel = editorVm)
+                EditorScreen(onBack = {}, onPickImage = {}, viewModel = editorVm)
             }
         }
         settle()

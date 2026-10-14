@@ -31,7 +31,7 @@ fun QuickNotesNavHost(navController: NavHostController = rememberNavController()
             route = Routes.EDITOR,
             arguments = listOf(navArgument("noteId") { type = NavType.StringType }),
         ) {
-            EditorScreen(onBack = { navController.popBackStack() })
+            EditorScreen(onBack = { navController.popBackStack() }, onPickImage = {})
         }
     }
 }

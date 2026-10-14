@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 02:05 — M1 committed (f0ec55f). Starting M2 (media blocks).
+Heartbeat (UTC): 2026-10-14 02:55 — M2 in progress: media store, link fetcher/parser, drawing engine+screen+renderer, camera screen all compiling; 46 unit tests green. Next: editor overlays + share target.
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)

@@ -12,23 +12,32 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -37,19 +46,24 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vansh.quicknotes.domain.model.Block
 import com.vansh.quicknotes.domain.model.BlockType
+import com.vansh.quicknotes.domain.model.ChecklistItemPayload
 import com.vansh.quicknotes.ui.design.LocalQNPalette
 import com.vansh.quicknotes.ui.design.QNShapes
 import com.vansh.quicknotes.ui.design.QNType
+import com.vansh.quicknotes.ui.design.rememberQNHaptic
 import com.vansh.quicknotes.ui.design.qnPressable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun EditorScreen(
     onBack: () -> Unit,
+    onPickImage: ((java.io.File) -> Unit) -> Unit,
     viewModel: EditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val palette = LocalQNPalette.current
-    val focusRequester = androidx.compose.runtime.remember { FocusRequester() }
+    val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -75,7 +89,7 @@ fun EditorScreen(
         ) {
             if (note != null) {
                 items(note.blocks, key = { it.id }, contentType = { it.type }) { block ->
-                    BlockView(block, viewModel, focusRequester = focusRequester)
+                    BlockView(block, viewModel)
                 }
             }
         }
@@ -85,67 +99,228 @@ fun EditorScreen(
         }
 
         CaptureBar(
-            onAdd = { type -> viewModel.insertBlock(type) },
+            onMic = { /* M3 recording sheet */ },
+            onCamera = { onPickImage { file -> viewModel.addImage(file.readBytes()) } },
+            onDraw = { /* drawing overlay */ },
+            onLink = { /* link dialog handled by caller via onAddLink below */ },
+            onChecklist = { viewModel.addChecklist() },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
 
-    // open with keyboard up + cursor ready (spec §5.1)
-    androidx.compose.runtime.LaunchedEffect(state.loaded) {
+    LaunchedEffect(state.loaded) {
         if (state.loaded) {
-            focusRequester.requestFocus()
+            runCatching { focusRequester.requestFocus() }
             keyboard?.show()
         }
     }
 }
 
-
+@Composable
+private fun BlockView(block: Block, viewModel: EditorViewModel) {
+    when (block.type) {
+        BlockType.TEXT -> TextBlockView(block, viewModel)
+        BlockType.DIVIDER -> DividerBlockView()
+        BlockType.CHECKLIST -> ChecklistBlockView(block, viewModel)
+        BlockType.IMAGE, BlockType.CAMERA -> ImageBlockView(block, viewModel)
+        BlockType.DRAWING -> DrawingBlockView(block, viewModel)
+        BlockType.LINK -> LinkBlockView(block)
+        BlockType.VOICE -> VoiceBlockView(block)
+    }
+}
 
 @Composable
-private fun BlockView(block: Block, viewModel: EditorViewModel, focusRequester: FocusRequester) {
+private fun TextBlockView(block: Block, viewModel: EditorViewModel) {
     val palette = LocalQNPalette.current
-    when (block.type) {
-        BlockType.TEXT -> {
-            val isFirst = block.orderIndex == 0
-            BasicTextField(
-                value = block.text?.text.orEmpty(),
-                onValueChange = { viewModel.onBlockTextChange(block.id, it) },
-                textStyle = (if (isFirst) QNType.title else QNType.body).copy(color = palette.textPrimary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                cursorBrush = SolidColor(palette.accent),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(if (isFirst) focusRequester else androidx.compose.runtime.remember { FocusRequester() })
-                    .testTag("editor_block_${block.id}"),
-            )
+    val isFirst = block.orderIndex == 0
+    val focusRequester = remember { FocusRequester() }
+    BasicTextField(
+        value = block.text?.text.orEmpty(),
+        onValueChange = { viewModel.onBlockTextChange(block.id, it) },
+        textStyle = (if (isFirst) QNType.title else QNType.body).copy(color = palette.textPrimary),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        cursorBrush = SolidColor(palette.accent),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .testTag("editor_block_${block.id}"),
+    )
+    LaunchedEffect(Unit) {
+        if (isFirst) runCatching { focusRequester.requestFocus() }
+    }
+}
+
+@Composable
+private fun DividerBlockView() {
+    val palette = LocalQNPalette.current
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(palette.separator)
+            .testTag("editor_divider"),
+    )
+}
+
+@Composable
+private fun ChecklistBlockView(block: Block, viewModel: EditorViewModel) {
+    val palette = LocalQNPalette.current
+    val haptic = rememberQNHaptic()
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(QNShapes.card)
+            .background(palette.card)
+            .padding(14.dp)
+            .testTag("editor_checklist_${block.id}"),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        val items = block.checklist?.items.orEmpty()
+        items.forEach { item ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(if (item.done) palette.success else palette.separator)
+                        .qnPressable {
+                            haptic()
+                            viewModel.updateChecklist(block.id, items.map { if (it.id == item.id) it.copy(done = !it.done) else it })
+                        }
+                        .testTag("check_${item.id}"),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    item.text,
+                    style = QNType.body,
+                    color = if (item.done) palette.textTertiary else palette.textPrimary,
+                    modifier = Modifier.testTag("check_text_${item.id}"),
+                )
+            }
         }
-        BlockType.DIVIDER -> Box(
-            Modifier.fillMaxWidth().height(1.dp).background(palette.separator).testTag("editor_divider"),
-        )
-        else -> Box(
-            Modifier
-                .fillMaxWidth()
-                .clip(QNShapes.tile)
-                .background(palette.card)
-                .padding(16.dp)
-                .testTag("editor_block_${block.id}"),
-        ) {
-            Text(blockLabel(block), style = QNType.callout, color = palette.textSecondary)
+        if (items.isEmpty()) {
+            Text("Empty checklist", style = QNType.callout, color = palette.textTertiary)
         }
     }
 }
 
-private fun blockLabel(block: Block): String = when (block.type) {
-    BlockType.CHECKLIST -> "Checklist"
-    BlockType.IMAGE, BlockType.CAMERA -> "Photo"
-    BlockType.DRAWING -> "Drawing"
-    BlockType.VOICE -> "Voice clip"
-    BlockType.LINK -> block.link?.url ?: "Link"
-    else -> "Block"
+@Composable
+private fun ImageBlockView(block: Block, viewModel: EditorViewModel) {
+    val palette = LocalQNPalette.current
+    var file by remember(block.id) { mutableStateOf<java.io.File?>(null) }
+    LaunchedEffect(block.id) {
+        file = withContext(Dispatchers.IO) { runCatching { viewModel.mediaFile(block.image?.assetId.orEmpty()) }.getOrNull() }
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(QNShapes.card)
+            .testTag("editor_image_${block.id}"),
+    ) {
+        val f = file
+        if (f != null) {
+            coil3.compose.AsyncImage(
+                model = f,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Box(Modifier.fillMaxWidth().height(140.dp).background(palette.separator))
+        }
+    }
 }
 
 @Composable
-private fun CaptureBar(onAdd: (BlockType) -> Unit, modifier: Modifier = Modifier) {
+private fun DrawingBlockView(block: Block, viewModel: EditorViewModel) {
+    val palette = LocalQNPalette.current
+    var file by remember(block.id) { mutableStateOf<java.io.File?>(null) }
+    LaunchedEffect(block.id) {
+        file = withContext(Dispatchers.IO) { runCatching { viewModel.mediaFile(block.drawing?.previewAssetId.orEmpty()) }.getOrNull() }
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(QNShapes.card)
+            .background(palette.card)
+            .testTag("editor_drawing_${block.id}"),
+    ) {
+        val f = file
+        if (f != null) {
+            coil3.compose.AsyncImage(
+                model = f,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Text("Drawing", style = QNType.callout, color = palette.textSecondary, modifier = Modifier.padding(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun LinkBlockView(block: Block) {
+    val palette = LocalQNPalette.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(QNShapes.card)
+            .background(palette.card)
+            .padding(16.dp)
+            .testTag("editor_link_${block.id}"),
+    ) {
+        block.link?.siteName?.let {
+            Text(it.uppercase(), style = QNType.captionTinted, color = palette.textTertiary)
+            Spacer(Modifier.height(4.dp))
+        }
+        Text(
+            block.link?.title?.takeIf { it.isNotBlank() } ?: block.link?.url.orEmpty(),
+            style = QNType.headline,
+            color = palette.textPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (!block.link?.title.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(block.link?.url.orEmpty(), style = QNType.caption, color = palette.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun VoiceBlockView(block: Block) {
+    val palette = LocalQNPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(QNShapes.card)
+            .background(palette.card)
+            .padding(16.dp)
+            .testTag("editor_voice_${block.id}"),
+    ) {
+        Text("●", color = palette.destructive, style = QNType.title)
+        Column(Modifier.weight(1f)) {
+            Text("Voice clip", style = QNType.headline, color = palette.textPrimary)
+            val dur = (block.voice?.durationMs ?: 0) / 1000
+            Text("%d:%02d".format(dur / 60, dur % 60), style = QNType.caption, color = palette.textTertiary)
+        }
+        block.voice?.transcript?.let {
+            Text(it.take(60), style = QNType.caption, color = palette.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(120.dp))
+        }
+    }
+}
+
+@Composable
+private fun CaptureBar(
+    onMic: () -> Unit,
+    onCamera: () -> Unit,
+    onDraw: () -> Unit,
+    onLink: () -> Unit,
+    onChecklist: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val palette = LocalQNPalette.current
     Row(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -158,13 +333,13 @@ private fun CaptureBar(onAdd: (BlockType) -> Unit, modifier: Modifier = Modifier
             .padding(horizontal = 22.dp, vertical = 14.dp)
             .testTag("editor_capture_bar"),
     ) {
-        listOf(BlockType.VOICE to "Mic", BlockType.CAMERA to "Camera", BlockType.DRAWING to "Draw", BlockType.LINK to "Link", BlockType.CHECKLIST to "Checklist").forEach { (type, label) ->
+        listOf("Mic" to onMic, "Camera" to onCamera, "Draw" to onDraw, "Link" to onLink, "Checklist" to onChecklist).forEach { (label, action) ->
             Text(
                 label,
                 style = QNType.headline,
                 color = palette.accent,
                 modifier = Modifier
-                    .qnPressable { onAdd(type) }
+                    .qnPressable(onClick = action)
                     .testTag("capture_${label.lowercase()}"),
             )
         }

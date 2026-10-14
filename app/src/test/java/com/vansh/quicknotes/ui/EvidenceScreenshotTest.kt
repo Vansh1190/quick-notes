@@ -15,7 +15,9 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.vansh.quicknotes.data.local.FakeNoteSearchIndex
 import com.vansh.quicknotes.data.local.QuickNotesDatabase
+import com.vansh.quicknotes.data.media.MediaStore
 import com.vansh.quicknotes.data.repository.NotesRepository
+import com.vansh.quicknotes.domain.LinkFetcher
 import com.vansh.quicknotes.domain.model.Block
 import com.vansh.quicknotes.domain.model.BlockType
 import com.vansh.quicknotes.domain.model.ChecklistBlockPayload
@@ -48,6 +50,7 @@ class EvidenceScreenshotTest {
 
     private lateinit var db: QuickNotesDatabase
     private lateinit var repository: NotesRepository
+    private lateinit var mediaStore: MediaStore
 
     @Before
     fun setUp() {
@@ -59,6 +62,7 @@ class EvidenceScreenshotTest {
             .setTransactionExecutor(inline)
             .build()
         repository = NotesRepository(db.noteDao(), FakeNoteSearchIndex())
+        mediaStore = MediaStore(context, db.noteDao())
     }
 
     @After
@@ -115,9 +119,9 @@ class EvidenceScreenshotTest {
             Box(Modifier.testTag("shot_root")) {
                 QuickNotesTheme(darkTheme = false) {
                     vm = remember {
-                        EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository)
+                        EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, LinkFetcher())
                     }
-                    EditorScreen(onBack = {}, viewModel = vm)
+                    EditorScreen(onBack = {}, onPickImage = {}, viewModel = vm)
                 }
             }
         }
