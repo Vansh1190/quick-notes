@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 02:55 — M2 in progress: media store, link fetcher/parser, drawing engine+screen+renderer, camera screen all compiling; 46 unit tests green. Next: editor overlays + share target.
+Heartbeat (UTC): 2026-10-14 03:15 — M2 complete & committed. 59 unit tests, lint 0 errors. Starting M3 (voice FGS + Live Update).
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)
@@ -25,5 +25,10 @@ Heartbeat (UTC): 2026-10-14 02:55 — M2 in progress: media store, link fetcher/
 - Reasoning model returns reasoning_content — AI parser must trim (M6).
 - **Test-infra lessons:** (1) Robolectric SQLite has no fts5 → abstract search behind interface. (2) Room Flow queries dispatch on a background executor → set inline query/transaction executors in tests or use idleFor settling; plain waitForIdle races the flow. (3) AGP 9: kotlin-android plugin removed, M3 Shapes() wants CornerBasedShape (our QNShapes objects are used directly), Color.value can be 0 in JVM tests (assert components).
 
+## Done (M2 Media blocks)
+- MediaStore: images/audio/drawing-previews/crash-recovery chunks under filesDir/media with relative-path DB refs. LinkFetcher (HtmlMetaParser unit-tested; offline → plain-URL fallback). Drawing engine: pure StrokeGeometry (Catmull-Rom smoothing, decimation, pressure width, vector eraser) + DrawingState/Reducer (undo/redo, 6 colors, width slider) + DrawingScreen (finger+stylus pressure via PointerInputChange) + StrokeRenderer (android.graphics bitmap preview, unit-tested pixels). CameraScreen: CameraX keep-shooting → temp JPEGs → addImage. Gallery picker (ACTIVITY_RESULT GetContent). Share target: manifest SEND/SEND_MULTIPLE filters, ShareParser (unit-tested URL/prose/image rules), ShareHandler creates notes (tests: text/url-with-metadata/image-on-disk). Editor: image/checklist(toggle+haptic)/link/voice/drawing/divider block views; capture bar wires mic(M3)/camera/draw/link-dialog/checklist/gallery.
+- Evidence: docs/evidence m2-editor-blocks.png, m2-drawing.png.
+- Known v1 gaps logged: link thumbnail *image* download (title/site done), Scan-text OCR mode (spec marks optional), ML Kit not yet integrated (M2/M6 boundary).
+
 ## Next
-- M2: media store (app-private files), CameraX capture + keep-shooting, gallery pick, drawing canvas (vector strokes + preview render), link card fetcher, share-target activity.
+- M3: AudioRecorder (crash-safe chunks), RecordingService (mic FGS + notification with ProgressStyle/promoted-ongoing on 36), recovery scanner, RecordingSheet UI, on-device transcription (SpeechRecognizer), editor voice block live state.

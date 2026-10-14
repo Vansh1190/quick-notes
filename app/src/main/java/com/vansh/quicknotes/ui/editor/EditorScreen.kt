@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,16 +56,34 @@ import com.vansh.quicknotes.ui.design.qnPressable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun EditorScreen(
     onBack: () -> Unit,
-    onPickImage: ((java.io.File) -> Unit) -> Unit,
+    onPickImage: ((java.io.File) -> Unit) -> Unit = {},
     viewModel: EditorViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val palette = LocalQNPalette.current
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    var showCamera by remember { mutableStateOf(false) }
+    var showDrawing by remember { mutableStateOf(false) }
+    var showLinkDialog by remember { mutableStateOf(false) }
+    var linkInput by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri: android.net.Uri? ->
+        uri?.let { u ->
+            runCatching {
+                context.contentResolver.openInputStream(u)?.use { it.readBytes() }
+            }.getOrNull()?.let { bytes ->
+                val ext = if (context.contentResolver.getType(u)?.contains("png") == true) "png" else "jpg"
+                viewModel.addImage(bytes, ext)
+            }
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -100,11 +119,72 @@ fun EditorScreen(
 
         CaptureBar(
             onMic = { /* M3 recording sheet */ },
-            onCamera = { onPickImage { file -> viewModel.addImage(file.readBytes()) } },
-            onDraw = { /* drawing overlay */ },
-            onLink = { /* link dialog handled by caller via onAddLink below */ },
+            onCamera = { showCamera = true },
+            onDraw = { showDrawing = true },
+            onLink = { showLinkDialog = true },
             onChecklist = { viewModel.addChecklist() },
+            onGallery = { galleryLauncher.launch("image/*") },
             modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    if (showCamera) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showCamera = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            com.vansh.quicknotes.ui.camera.CameraScreen(
+                onDone = { files ->
+                    files.forEach { f -> runCatching { viewModel.addImage(f.readBytes()) } }
+                    showCamera = false
+                },
+                onCancel = { showCamera = false },
+                onError = { showCamera = false },
+            )
+        }
+    }
+
+    if (showDrawing) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showDrawing = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            com.vansh.quicknotes.ui.drawing.DrawingScreen(
+                onSave = { drawingState ->
+                    val w = 1080
+                    val h = 1440
+                    val bmp = com.vansh.quicknotes.ui.drawing.StrokeRenderer.render(drawingState.strokes, w, h)
+                    viewModel.addDrawing(drawingState.strokes, com.vansh.quicknotes.ui.drawing.StrokeRenderer.pngBytes(bmp), w, h)
+                    showDrawing = false
+                },
+                onCancel = { showDrawing = false },
+            )
+        }
+    }
+
+    if (showLinkDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showLinkDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (linkInput.isNotBlank()) viewModel.addLink(linkInput.trim())
+                        showLinkDialog = false
+                        linkInput = ""
+                    },
+                    modifier = Modifier.testTag("link_dialog_add"),
+                ) { Text("Add", color = palette.accent) }
+            },
+            text = {
+                BasicTextField(
+                    value = linkInput,
+                    onValueChange = { linkInput = it },
+                    textStyle = QNType.body.copy(color = palette.textPrimary),
+                    singleLine = true,
+                    cursorBrush = SolidColor(palette.accent),
+                    modifier = Modifier.fillMaxWidth().testTag("link_dialog_input"),
+                )
+            },
         )
     }
 
@@ -319,6 +399,7 @@ private fun CaptureBar(
     onDraw: () -> Unit,
     onLink: () -> Unit,
     onChecklist: () -> Unit,
+    onGallery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalQNPalette.current
@@ -333,7 +414,7 @@ private fun CaptureBar(
             .padding(horizontal = 22.dp, vertical = 14.dp)
             .testTag("editor_capture_bar"),
     ) {
-        listOf("Mic" to onMic, "Camera" to onCamera, "Draw" to onDraw, "Link" to onLink, "Checklist" to onChecklist).forEach { (label, action) ->
+        listOf("Mic" to onMic, "Camera" to onCamera, "Draw" to onDraw, "Link" to onLink, "Checklist" to onChecklist, "Photo" to onGallery).forEach { (label, action) ->
             Text(
                 label,
                 style = QNType.headline,

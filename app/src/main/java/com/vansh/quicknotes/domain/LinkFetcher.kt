@@ -8,14 +8,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fetches link cards (spec §5.5). Plain HttpURLConnection (no extra deps); any failure
- * returns a plain-URL fallback card so offline never blocks the note.
+ * Link card metadata fetch (spec §5.5). Any failure returns a plain-URL fallback card
+ * so offline never blocks the note.
  */
-@Singleton
-class LinkFetcher @Inject constructor() {
+interface LinkFetcher {
+    suspend fun fetch(url: String): LinkMetadata
+}
 
-    suspend fun fetch(url: String): LinkMetadata = withContext(Dispatchers.IO) {
-        runCatching { fetchBlocking(url) }.getOrElse { LinkMetadata(url = url, siteName = null) }
+@Singleton
+class HttpLinkFetcher @Inject constructor() : LinkFetcher {
+
+    override suspend fun fetch(url: String): LinkMetadata = withContext(Dispatchers.IO) {
+        runCatching { fetchBlocking(url) }.getOrElse { LinkMetadata(url = url) }
     }
 
     private fun fetchBlocking(url: String): LinkMetadata {

@@ -16,7 +16,7 @@ import com.vansh.quicknotes.data.local.FakeNoteSearchIndex
 import com.vansh.quicknotes.data.local.QuickNotesDatabase
 import com.vansh.quicknotes.data.media.MediaStore
 import com.vansh.quicknotes.data.repository.NotesRepository
-import com.vansh.quicknotes.domain.LinkFetcher
+import com.vansh.quicknotes.domain.HttpLinkFetcher
 import com.vansh.quicknotes.ui.design.QuickNotesTheme
 import com.vansh.quicknotes.ui.editor.EditorScreen
 import com.vansh.quicknotes.ui.editor.EditorViewModel
@@ -83,7 +83,7 @@ class M1NotesFlowTest {
         composeRule.setContent {
             QuickNotesTheme {
                 editorVm = androidx.compose.runtime.remember {
-                    EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, LinkFetcher())
+                    EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, HttpLinkFetcher())
                 }
                 EditorScreen(onBack = {}, onPickImage = {}, viewModel = editorVm)
             }

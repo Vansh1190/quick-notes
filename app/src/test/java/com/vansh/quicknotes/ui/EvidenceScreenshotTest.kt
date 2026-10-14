@@ -17,7 +17,10 @@ import com.vansh.quicknotes.data.local.FakeNoteSearchIndex
 import com.vansh.quicknotes.data.local.QuickNotesDatabase
 import com.vansh.quicknotes.data.media.MediaStore
 import com.vansh.quicknotes.data.repository.NotesRepository
-import com.vansh.quicknotes.domain.LinkFetcher
+import com.vansh.quicknotes.domain.HttpLinkFetcher
+import com.vansh.quicknotes.domain.DrawPoint
+import com.vansh.quicknotes.domain.DrawStroke
+import com.vansh.quicknotes.domain.DrawTool
 import com.vansh.quicknotes.domain.model.Block
 import com.vansh.quicknotes.domain.model.BlockType
 import com.vansh.quicknotes.domain.model.ChecklistBlockPayload
@@ -44,6 +47,11 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class EvidenceScreenshotTest {
+
+    private object LinkFetcherStub : com.vansh.quicknotes.domain.LinkFetcher {
+        override suspend fun fetch(url: String) = com.vansh.quicknotes.domain.LinkMetadata(url)
+    }
+
 
     @get:Rule
     val composeRule = createComposeRule()
@@ -113,13 +121,63 @@ class EvidenceScreenshotTest {
     }
 
     @Test
+    fun m2MixedBlocksNote() {
+        val id = runBlocking { repository.createNote("Project alpha") }
+        runBlocking {
+            val note = repository.loadNote(id)!!
+            repository.saveNote(
+                note.copy(
+                    blocks = note.blocks + listOf(
+                        Block("b2", com.vansh.quicknotes.domain.model.BlockType.CHECKLIST, 1, checklist = ChecklistBlockPayload(listOf(ChecklistItemPayload("i1", "draft the brief", true), ChecklistItemPayload("i2", "review with team")))),
+                        Block("b3", com.vansh.quicknotes.domain.model.BlockType.LINK, 2, link = LinkPayload("https://developer.android.com/about/versions/16/features", title = "Android 16 features · developer.android.com", siteName = "developer.android.com", fetched = true)),
+                    ),
+                ),
+            )
+        }
+        lateinit var vm: com.vansh.quicknotes.ui.editor.EditorViewModel
+        composeRule.setContent {
+            Box(Modifier.testTag("shot_root")) {
+                QuickNotesTheme(darkTheme = false) {
+                    vm = remember { com.vansh.quicknotes.ui.editor.EditorViewModel(SavedStateHandle(mapOf("noteId" to id)), repository, mediaStore, LinkFetcherStub) }
+                    EditorScreen(onBack = {}, onPickImage = {}, viewModel = vm)
+                }
+            }
+        }
+        settle()
+        save("m2-editor-blocks")
+    }
+
+    @Test
+    fun m2DrawingScreen() {
+        composeRule.setContent {
+            Box(Modifier.testTag("shot_root")) {
+                QuickNotesTheme(darkTheme = false) {
+                    com.vansh.quicknotes.ui.drawing.DrawingScreen(
+                        initial = com.vansh.quicknotes.ui.drawing.DrawingState(
+                            strokes = listOf(
+                                DrawStroke(listOf(DrawPoint(30f, 200f, 1f), DrawPoint(120f, 120f, 0.8f), DrawPoint(240f, 240f, 0.6f), DrawPoint(300f, 140f, 0.9f)), 0xFF007AFFL, 8f, DrawTool.PEN),
+                                DrawStroke(listOf(DrawPoint(40f, 300f, 1f), DrawPoint(280f, 300f, 1f)), 0x59FFD60AL, 20f, DrawTool.HIGHLIGHTER),
+                            ),
+                            tool = DrawTool.PEN,
+                        ),
+                        onSave = {},
+                        onCancel = {},
+                    )
+                }
+            }
+        }
+        settle()
+        save("m2-drawing")
+    }
+
+    @Test
     fun editorWithBlocks() {
         lateinit var vm: EditorViewModel
         composeRule.setContent {
             Box(Modifier.testTag("shot_root")) {
                 QuickNotesTheme(darkTheme = false) {
                     vm = remember {
-                        EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, LinkFetcher())
+                        EditorViewModel(SavedStateHandle(mapOf("noteId" to "new")), repository, mediaStore, HttpLinkFetcher())
                     }
                     EditorScreen(onBack = {}, onPickImage = {}, viewModel = vm)
                 }

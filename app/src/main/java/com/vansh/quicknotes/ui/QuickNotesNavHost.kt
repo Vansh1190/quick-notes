@@ -1,12 +1,14 @@
 package com.vansh.quicknotes.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.vansh.quicknotes.domain.ShareRouter
 import com.vansh.quicknotes.ui.editor.EditorScreen
 import com.vansh.quicknotes.ui.home.HomeScreen
 
@@ -19,7 +21,15 @@ object Routes {
 }
 
 @Composable
-fun QuickNotesNavHost(navController: NavHostController = rememberNavController()) {
+fun QuickNotesNavHost(
+    shareRouter: ShareRouter,
+    navController: NavHostController = rememberNavController(),
+) {
+    LaunchedEffect(shareRouter) {
+        shareRouter.openNote.collect { id ->
+            navController.navigate(Routes.editor(id))
+        }
+    }
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
             HomeScreen(
@@ -31,7 +41,10 @@ fun QuickNotesNavHost(navController: NavHostController = rememberNavController()
             route = Routes.EDITOR,
             arguments = listOf(navArgument("noteId") { type = NavType.StringType }),
         ) {
-            EditorScreen(onBack = { navController.popBackStack() }, onPickImage = {})
+            EditorScreen(
+                onBack = { navController.popBackStack() },
+                onPickImage = {},
+            )
         }
     }
 }

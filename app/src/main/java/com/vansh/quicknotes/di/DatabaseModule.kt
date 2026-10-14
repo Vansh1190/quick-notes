@@ -4,6 +4,8 @@ import android.content.Context
 import com.vansh.quicknotes.data.local.NoteDao
 import com.vansh.quicknotes.data.local.QuickNotesDatabase
 import com.vansh.quicknotes.data.local.NoteSearchIndex
+import com.vansh.quicknotes.domain.HttpLinkFetcher
+import com.vansh.quicknotes.domain.LinkFetcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,4 +25,8 @@ object DatabaseModule {
 
     @Provides
     fun searchIndex(db: QuickNotesDatabase): NoteSearchIndex = db.searchIndex
+
+    @Provides
+    @Singleton
+    fun linkFetcher(): LinkFetcher = HttpLinkFetcher()
 }
