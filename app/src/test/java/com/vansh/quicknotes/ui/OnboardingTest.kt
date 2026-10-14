@@ -47,10 +47,16 @@ class OnboardingTest {
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
             .idleFor(java.time.Duration.ofMillis(500))
         assertTrue("finish callback did not run", finished)
-        // persist is fire-and-forget; give the datastore time to land
-        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
-            .idleFor(java.time.Duration.ofMillis(1_500))
-        assertTrue("onboardingDone not persisted", kotlinx.coroutines.runBlocking { settings.settings.first().onboardingDone })
+        // persist is fire-and-forget on a real IO thread; poll on wall clock (up to ~8s)
+        var persisted = false
+        repeat(40) {
+            Thread.sleep(200)
+            if (kotlinx.coroutines.runBlocking { settings.settings.first().onboardingDone }) {
+                persisted = true
+                return@repeat
+            }
+        }
+        assertTrue("onboardingDone not persisted", persisted)
     }
 
     @Test

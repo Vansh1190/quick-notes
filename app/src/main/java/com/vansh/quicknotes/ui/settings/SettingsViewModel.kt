@@ -19,7 +19,51 @@ import kotlinx.coroutines.launch
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val aiClient: AiClient,
+    private val backupManager: com.vansh.quicknotes.domain.backup.BackupManager,
 ) : ViewModel() {
+
+    sealed interface BackupState {
+        data object Idle : BackupState
+        data object Busy : BackupState
+        data class Exported(val path: String, val notes: Int) : BackupState
+        data class Imported(val notes: Int, val skipped: Int) : BackupState
+        data class Failed(val message: String) : BackupState
+    }
+
+    private val _backupState = MutableStateFlow<BackupState>(BackupState.Idle)
+    val backupState: StateFlow<BackupState> = _backupState.asStateFlow()
+
+    fun exportBackup() {
+        _backupState.value = BackupState.Busy
+        viewModelScope.launch {
+            _backupState.value = try {
+                val file = backupManager.defaultExportFile()
+                val count = backupManager.exportZip(file)
+                BackupState.Exported(file.absolutePath, count)
+            } catch (t: Throwable) {
+                BackupState.Failed("Export failed")
+            }
+        }
+    }
+
+    fun importBackup(uri: android.net.Uri, resolver: android.content.ContentResolver) {
+        _backupState.value = BackupState.Busy
+        viewModelScope.launch {
+            _backupState.value = try {
+                val tmp = java.io.File.createTempFile("qn-import", ".zip")
+                resolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
+                    ?: run {
+                        _backupState.value = BackupState.Failed("Could not read the file")
+                        return@launch
+                    }
+                val result = backupManager.importZip(tmp)
+                tmp.delete()
+                BackupState.Imported(result.notes, result.skipped)
+            } catch (t: Throwable) {
+                BackupState.Failed("Import failed")
+            }
+        }
+    }
 
     val state: StateFlow<SettingsRepository.Settings> = settings.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.Settings())

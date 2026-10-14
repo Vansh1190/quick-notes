@@ -130,6 +130,38 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(16.dp))
+        SectionLabel("Backup")
+        val backupState by viewModel.backupState.collectAsStateWithLifecycle()
+        val resolver = androidx.compose.ui.platform.LocalContext.current.contentResolver
+        val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        ) { uri -> uri?.let { viewModel.importBackup(it, resolver) } }
+        SettingsCard {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(12.dp)).background(palette.accent)
+                        .qnPressable(enabled = backupState !is SettingsViewModel.BackupState.Busy, onClick = viewModel::exportBackup)
+                        .testTag("settings_export"),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Export ZIP", style = QNType.subheadline, color = palette.onAccent) }
+                Box(
+                    Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(12.dp)).background(palette.surface)
+                        .qnPressable(enabled = backupState !is SettingsViewModel.BackupState.Busy) { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }
+                        .testTag("settings_import"),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Import ZIP", style = QNType.subheadline, color = palette.textPrimary) }
+            }
+            Spacer(Modifier.height(8.dp))
+            when (val b = backupState) {
+                is SettingsViewModel.BackupState.Busy -> Text("Working…", style = QNType.caption, color = palette.textTertiary)
+                is SettingsViewModel.BackupState.Exported -> Text("Saved ${b.notes} notes → ${b.path}", style = QNType.caption, color = palette.success, modifier = Modifier.testTag("settings_backup_ok"))
+                is SettingsViewModel.BackupState.Imported -> Text("Imported ${b.notes} notes (${b.skipped} already existed)", style = QNType.caption, color = palette.success, modifier = Modifier.testTag("settings_backup_ok"))
+                is SettingsViewModel.BackupState.Failed -> Text(b.message, style = QNType.caption, color = palette.destructive)
+                else -> Text("Notes + media + tags as one ZIP, with a Markdown copy per note inside. Keys never included.", style = QNType.caption, color = palette.textTertiary)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
         SectionLabel("Quick access")
         SettingsCard {
             Text(

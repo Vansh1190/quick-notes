@@ -172,6 +172,22 @@ class NotesRepository @Inject constructor(
         dao.setTitle(noteId, title.trim(), now())
     }
 
+    /** Lossless restore of a backup note: keeps ids/timestamps verbatim and re-indexes search. */
+    suspend fun restoreNote(note: Note) = saveNoteInternal(note)
+
+    /** Every note incl. archived/trashed, with decoded blocks, for backup export. */
+    suspend fun allNotesForExport(): List<Note> =
+        dao.allNotes().map { entity -> entity.toDomain(dao.blocksFor(entity.id).map(::toDomain)) }
+
+    /** Raw block rows (lossless) for a note, for backup export. */
+    suspend fun rawBlocks(noteId: String): List<BlockEntity> = dao.blocksFor(noteId)
+
+    suspend fun rawMedia(noteId: String): List<MediaAssetEntity> = dao.mediaForNote(noteId)
+
+    suspend fun exists(id: String): Boolean = dao.noteById(id) != null
+
+    suspend fun restoreRaw(blocks: List<BlockEntity>) = dao.upsertBlocks(blocks)
+
     suspend fun setPinned(id: String, pinned: Boolean) = dao.setPinned(id, pinned, now())
 
     suspend fun setArchived(id: String, archived: Boolean) = dao.setArchived(id, archived, now())
@@ -224,7 +240,7 @@ class NotesRepository @Inject constructor(
         return BlockEntity(id = block.id, noteId = noteId, type = block.type.wire, orderIndex = block.orderIndex, payload = payload)
     }
 
-    private fun toDomain(entity: BlockEntity): Block {
+    fun toDomain(entity: BlockEntity): Block {
         val type = BlockType.from(entity.type) ?: BlockType.TEXT
         val payload = runCatching {
             when (type) {

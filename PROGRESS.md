@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Heartbeat (UTC): 2026-10-14 07:45 — M6 fully committed (Ask/Recap/Loose Ends/Link Essence/Snap+OCR, live test in androidTest). M7a onboarding done (3 pages, skip/done, settings gate, start-destination wiring). 115 tests. Building M7b backup/export next.
+Heartbeat (UTC): 2026-10-14 08:10 — M7b backup/export committed next: ZIP (lossless JSON rows + markdown/note + media/) with exact-restore import (note-row-first FK order fix caught by round-trip test). Settings UI wired. 117 tests. Then M7c release build.
 
 ## Phase 0 gate
 - [x] Environment checked, missing tools reported (ENVIRONMENT.md)

@@ -110,6 +110,9 @@ class MediaStore @Inject constructor(
 
     suspend fun byId(id: String): MediaAssetEntity? = dao.mediaById(id)
 
+    /** Public path for backup import: put bytes at a known relative path. */
+    fun writeRestored(relativePath: String, bytes: ByteArray) = write(relativePath, bytes)
+
     private fun write(relativePath: String, bytes: ByteArray) {
         val f = File(root, relativePath)
         f.parentFile?.mkdirs()
