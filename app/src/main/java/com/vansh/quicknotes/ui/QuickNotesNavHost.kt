@@ -11,6 +11,7 @@ import androidx.navigation.navArgument
 import com.vansh.quicknotes.domain.ShareRouter
 import com.vansh.quicknotes.ui.editor.EditorScreen
 import com.vansh.quicknotes.ui.home.HomeScreen
+import com.vansh.quicknotes.ui.lists.ListDetailScreen
 import com.vansh.quicknotes.ui.lists.ListsScreen
 import com.vansh.quicknotes.ui.onboarding.OnboardingScreen
 import com.vansh.quicknotes.ui.settings.SettingsScreen
@@ -34,7 +35,7 @@ object Routes {
 @Composable
 fun QuickNotesNavHost(
     shareRouter: ShareRouter,
-    onboardingPending: Boolean = false,
+    onboardingPending: Boolean? = false,
     startAtNoteId: String? = null,
     startInCaptureMode: String? = null,
     startAtLists: Boolean = false,
@@ -66,6 +67,9 @@ fun QuickNotesNavHost(
             }
         }
     }
+    // Start destination must be final when the graph is built: null means the stored preference
+    // has not been read yet, so stay on the window background rather than flash the wrong screen.
+    if (onboardingPending == null) return
     NavHost(navController = navController, startDestination = if (onboardingPending) Routes.ONBOARDING else Routes.HOME) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(onDone = { navController.navigate(Routes.HOME) })
@@ -90,6 +94,12 @@ fun QuickNotesNavHost(
         }
         composable(Routes.LISTS) {
             ListsScreen(onOpenList = { id -> navController.navigate(Routes.listDetail(id)) })
+        }
+        composable(
+            route = Routes.LIST_DETAIL,
+            arguments = listOf(navArgument("listId") { type = NavType.StringType }),
+        ) {
+            ListDetailScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onBack = { navController.popBackStack() })

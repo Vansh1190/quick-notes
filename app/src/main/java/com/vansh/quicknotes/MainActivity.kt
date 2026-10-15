@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import com.vansh.quicknotes.domain.SharedContent
 import com.vansh.quicknotes.domain.ShareHandler
@@ -30,7 +31,9 @@ class MainActivity : ComponentActivity() {
 
     private val pendingOpenNote = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private val pendingOpenListsFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
-    private val onboardingPending = kotlinx.coroutines.flow.MutableStateFlow(false)
+    // null until the stored preference has been read: the start destination has to be decided
+    // before the nav graph is built, never swapped underneath an already-set graph.
+    private val onboardingPending = kotlinx.coroutines.flow.MutableStateFlow<Boolean?>(null)
     private val pendingCaptureMode = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
 
@@ -40,17 +43,19 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { recoveryRunner.run() }
         routeExtras(intent)
         handleIntent(intent)
-        ShortcutPublisher.publish(this)
-        com.vansh.quicknotes.service.RecapScheduler.schedule(this)
+        // Optional quick-access/scheduling side effects must never take launch down.
+        optionalStartupStep("shortcuts") { ShortcutPublisher.publish(this) }
+        optionalStartupStep("recap-scheduler") { com.vansh.quicknotes.service.RecapScheduler.schedule(this) }
         lifecycleScope.launch {
             onboardingPending.value = settings.settings.first().onboardingDone != true
         }
         showStoredCrashIfAny()
         setContent {
             QuickNotesTheme {
+                val onboarding by onboardingPending.collectAsState()
                 QuickNotesNavHost(
                     shareRouter = shareRouter,
-                    onboardingPending = onboardingPending.collectAsState().value,
+                    onboardingPending = onboarding,
                     startAtNoteId = pendingOpenNote.collectAsState().value,
                     startInCaptureMode = pendingCaptureMode.collectAsState().value,
                     startAtLists = pendingOpenListsFlow.collectAsState().value,
@@ -72,8 +77,16 @@ class MainActivity : ComponentActivity() {
         ShortcutPublisher.publish(this)
     }
 
+    private fun optionalStartupStep(name: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (t: Exception) {
+            android.util.Log.w("MainActivity", "optional startup step failed: $name", t)
+        }
+    }
+
     private fun showStoredCrashIfAny() {
-        val file = com.vansh.quicknotes.CrashCatcher.crashFile(this)
+        val file = CrashReporter.latestCrashFile(this)
         if (!file.exists()) return
         thread(isDaemon = true, name = "crash-report") {
             val trace = runCatching { file.readText() }.getOrDefault("crash file unreadable")

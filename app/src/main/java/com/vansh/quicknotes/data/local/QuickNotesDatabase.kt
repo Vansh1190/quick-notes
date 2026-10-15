@@ -15,25 +15,45 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 class Fts5SearchIndex(private val dao: SearchDao) : NoteSearchIndex {
 
+    @Volatile private var usable = true
+
+    /**
+     * The FTS table is created by the database callback and can be absent (a platform without the
+     * fts5 module, a half-applied schema). Search then degrades to "no results" instead of taking
+     * the app down on launch, which is what an uncaught SQLiteException here used to do.
+     */
+    private suspend fun <T> guarded(fallback: T, op: suspend () -> T): T =
+        if (!usable) fallback else try {
+            op()
+        } catch (t: Exception) {
+            usable = false
+            android.util.Log.w("Fts5SearchIndex", "fts unavailable; search disabled", t)
+            fallback
+        }
+
     override suspend fun reindex(noteId: String, title: String, text: String) {
-        dao.execute(SimpleSQLiteQuery("DELETE FROM $TABLE WHERE note_id = ?", arrayOf(noteId)))
-        dao.execute(
-            SimpleSQLiteQuery(
-                "INSERT INTO $TABLE (note_id, title, text) VALUES (?, ?, ?)",
-                arrayOf(noteId, title, text),
-            ),
-        )
+        guarded(Unit) {
+            dao.execute(SimpleSQLiteQuery("DELETE FROM $TABLE WHERE note_id = ?", arrayOf(noteId)))
+            dao.execute(
+                SimpleSQLiteQuery(
+                    "INSERT INTO $TABLE (note_id, title, text) VALUES (?, ?, ?)",
+                    arrayOf(noteId, title, text),
+                ),
+            )
+        }
     }
 
     override suspend fun remove(noteId: String) {
-        dao.execute(SimpleSQLiteQuery("DELETE FROM $TABLE WHERE note_id = ?", arrayOf(noteId)))
+        guarded(Unit) {
+            dao.execute(SimpleSQLiteQuery("DELETE FROM $TABLE WHERE note_id = ?", arrayOf(noteId)))
+        }
     }
 
     override suspend fun orphanIds(): List<String> =
-        dao.search(SimpleSQLiteQuery(ORPHAN_SQL)).map { it.noteId }
+        guarded(emptyList()) { dao.search(SimpleSQLiteQuery(ORPHAN_SQL)).map { it.noteId } }
 
     override suspend fun search(query: String, limit: Int): List<String> =
-        dao.search(SimpleSQLiteQuery(SEARCH_SQL, arrayOf<Any>(query, limit))).map { it.noteId }
+        guarded(emptyList()) { dao.search(SimpleSQLiteQuery(SEARCH_SQL, arrayOf<Any>(query, limit))).map { it.noteId } }
 
     companion object {
         const val TABLE = "note_fts_index"
