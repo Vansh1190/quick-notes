@@ -1,5 +1,12 @@
 package com.vansh.quicknotes.ui.editor
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+
+import com.vansh.quicknotes.ui.design.QNHeader
+import com.vansh.quicknotes.ui.design.QNHeaderAction
+import com.vansh.quicknotes.ui.design.qnStatusBarInset
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -125,8 +132,18 @@ fun EditorScreen(
 
     Box(Modifier.fillMaxSize().background(palette.background).testTag("editor_root")) {
         val note = state.note
+        QNHeader(
+            title = "",
+            onBack = onBack,
+            backTag = "editor_back",
+            titleTag = "editor_title",
+            modifier = Modifier.qnStatusBarInset().padding(horizontal = 8.dp),
+            actions = {
+                QNHeaderAction("editor_ai_button", "AI features", "AI", emphasised = true, onClick = { showAiSheet = true })
+            },
+        )
         LazyColumn(
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 60.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 76.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize().testTag("editor_blocks"),
         ) {
@@ -481,6 +498,7 @@ private fun CaptureBar(
         modifier = modifier
             .padding(bottom = 20.dp)
             .imePadding()
+            .horizontalScroll(rememberScrollState())
             .clip(QNShapes.pill)
             .background(palette.card)
             .padding(horizontal = 22.dp, vertical = 14.dp)
@@ -491,6 +509,9 @@ private fun CaptureBar(
                 label,
                 style = QNType.headline,
                 color = palette.accent,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
+                softWrap = false,
                 modifier = Modifier
                     .qnPressable(onClick = action)
                     .testTag("capture_${label.lowercase()}"),

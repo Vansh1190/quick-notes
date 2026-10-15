@@ -1,5 +1,12 @@
 package com.vansh.quicknotes.ui.lists
 
+import com.vansh.quicknotes.ui.design.QNHeader
+import com.vansh.quicknotes.ui.design.QNHeaderAction
+import com.vansh.quicknotes.ui.design.qnStatusBarInset
+import com.vansh.quicknotes.ui.design.qnNavBarInset
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +55,7 @@ import com.vansh.quicknotes.ui.design.qnPressable
 @Composable
 fun ListsScreen(
     onOpenList: (String) -> Unit,
+    onBack: () -> Unit = {},
     viewModel: ListsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -62,11 +70,16 @@ fun ListsScreen(
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().testTag("lists_column"),
+            modifier = Modifier.fillMaxSize().qnStatusBarInset().testTag("lists_column"),
         ) {
             item {
-                Column(Modifier.padding(top = 30.dp)) {
-                    Text("Lists", style = QNType.largeTitle, color = palette.textPrimary, modifier = Modifier.testTag("lists_title"))
+                Column(Modifier.padding(top = 8.dp)) {
+                    QNHeader(
+                        title = "Lists",
+                        onBack = onBack,
+                        backTag = "lists_back",
+                        titleTag = "lists_title",
+                    )
                     Spacer(Modifier.height(14.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -102,6 +115,7 @@ fun ListsScreen(
                             modifier = Modifier
                                 .size(46.dp)
                                 .background(palette.card, RoundedCornerShape(14.dp))
+                                .semantics { contentDescription = "Record a list" }
                                 .qnPressable { recording.start() }
                                 .testTag("lists_mic"),
                             contentAlignment = Alignment.Center,
@@ -231,7 +245,11 @@ private fun ListCard(summary: ListsRepository.ListSummary, onClick: () -> Unit) 
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                if (summary.openCount == 0) "All done" else "${summary.openCount} open",
+                when {
+                    summary.openCount == 0 && summary.progress == 0f -> "No items yet"
+                    summary.openCount == 0 -> "All done"
+                    else -> "${summary.openCount} open"
+                },
                 style = QNType.caption,
                 color = palette.textTertiary,
             )

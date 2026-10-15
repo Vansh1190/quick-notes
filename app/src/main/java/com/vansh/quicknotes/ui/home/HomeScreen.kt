@@ -1,5 +1,10 @@
 package com.vansh.quicknotes.ui.home
 
+import com.vansh.quicknotes.ui.design.QNHeader
+import com.vansh.quicknotes.ui.design.QNHeaderAction
+import com.vansh.quicknotes.ui.design.qnNavBarInset
+import com.vansh.quicknotes.ui.design.qnStatusBarInset
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -65,51 +70,24 @@ fun HomeScreen(
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize().testTag("home_list"),
+            modifier = Modifier.fillMaxSize().qnStatusBarInset().testTag("home_list"),
         ) {
             item {
-                Column(Modifier.padding(top = 30.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Notes", style = QNType.largeTitle, color = palette.textPrimary, modifier = Modifier.weight(1f).testTag("home_title"))
-                        Box(
-                            modifier = Modifier
-                                .background(palette.surface, RoundedCornerShape(12.dp))
-                                .qnPressable(onClick = onOpenLists)
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .testTag("home_lists_button"),
-                        ) {
-                            Text("Lists", style = QNType.captionTinted, color = palette.accent)
-                        }
+                Column(Modifier.padding(top = 8.dp)) {
+                    QNHeader(
+                        title = "Notes",
+                        titleTag = "home_title",
+                        actions = {
+                            QNHeaderAction("home_lists_button", "Open lists", "Lists", emphasised = true, onClick = onOpenLists)
+                            Spacer(Modifier.width(8.dp))
+                            QNHeaderAction("home_settings_button", "Open settings", "Settings", onClick = onOpenSettings)
+                        },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row {
+                        QNHeaderAction("home_ask_button", "Ask my notes", "Ask my notes", onClick = { showAsk = true })
                         Spacer(Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .background(palette.surface, RoundedCornerShape(12.dp))
-                                .qnPressable(onClick = onOpenSettings)
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .testTag("home_settings_button"),
-                        ) {
-                            Text("⚙", style = QNType.captionTinted, color = palette.textSecondary)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .background(palette.surface, RoundedCornerShape(12.dp))
-                                .qnPressable(onClick = { showAsk = true })
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .testTag("home_ask_button"),
-                        ) {
-                            Text("Ask", style = QNType.captionTinted, color = palette.textSecondary)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .background(palette.surface, RoundedCornerShape(12.dp))
-                                .qnPressable(onClick = { showLooseEnds = true; viewModel.scanLooseEnds() })
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .testTag("home_loose_ends_button"),
-                        ) {
-                            Text("Loose ends", style = QNType.captionTinted, color = palette.textSecondary)
-                        }
+                        QNHeaderAction("home_loose_ends_button", "Loose ends", "Loose ends", onClick = { showLooseEnds = true; viewModel.scanLooseEnds() })
                     }
                     Spacer(Modifier.height(12.dp))
                     SearchField(
@@ -363,13 +341,14 @@ fun CapturePill(onNewNote: () -> Unit, onVoice: () -> Unit = {}, modifier: Modif
         horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
+            .qnNavBarInset()
             .clip(QNShapes.pill)
             .background(palette.card)
             .padding(horizontal = 24.dp, vertical = 15.dp)
             .testTag("home_capture_pill"),
     ) {
         listOf("Mic" to onVoice, "Camera" to onNewNote, "Draw" to onNewNote, "Link" to onNewNote, "List" to onNewNote).forEach { (label, action) ->
-            Text(label, style = QNType.headline, color = palette.accent, modifier = Modifier.qnPressable(onClick = action).testTag("pill_$label"))
+            Text(label, style = QNType.headline, color = palette.accent, maxLines = 1, modifier = Modifier.qnPressable(onClick = action).testTag("pill_$label"))
         }
         Box(
             Modifier

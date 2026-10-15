@@ -93,7 +93,7 @@ fun QuickNotesNavHost(
             }
         }
         composable(Routes.LISTS) {
-            ListsScreen(onOpenList = { id -> navController.navigate(Routes.listDetail(id)) })
+            ListsScreen(onOpenList = { id -> navController.navigate(Routes.listDetail(id)) }, onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.LIST_DETAIL,

@@ -1,5 +1,8 @@
 package com.vansh.quicknotes.ui.settings
 
+import com.vansh.quicknotes.ui.design.qnNavBarInset
+import com.vansh.quicknotes.ui.design.qnStatusBarInset
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,10 +61,11 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(palette.background)
             .verticalScroll(rememberScrollState())
+            .qnStatusBarInset()
             .padding(horizontal = 16.dp)
             .testTag("settings_root"),
     ) {
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "‹",
@@ -123,7 +127,7 @@ fun SettingsScreen(
         SettingsCard {
             SettingRow("Reduce motion", "fades instead of springs", state.reduceMotion, viewModel::saveReduceMotion, "settings_reduce_motion")
             Text(
-                "Accent: Apple Notes yellow (v1 fixed)",
+                "Accent: Apple Notes yellow",
                 style = QNType.caption,
                 color = palette.textTertiary,
                 modifier = Modifier.padding(vertical = 10.dp),
@@ -242,6 +246,7 @@ private fun SettingRow(title: String, subtitle: String, checked: Boolean, onChan
             Text(title, style = QNType.body, color = palette.textPrimary)
             Text(subtitle, style = QNType.caption, color = palette.textTertiary)
         }
+        Spacer(Modifier.width(12.dp))
         Switch(
             checked = checked,
             onCheckedChange = onChange,

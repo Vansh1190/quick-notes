@@ -1,5 +1,9 @@
 package com.vansh.quicknotes.ui.lists
 
+import com.vansh.quicknotes.ui.design.qnNavBarInset
+import com.vansh.quicknotes.ui.design.qnStatusBarInset
+import androidx.compose.foundation.layout.imePadding
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -76,7 +80,7 @@ fun ListDetailScreen(
     }
 
     Box(Modifier.fillMaxSize().background(palette.background).testTag("list_detail_root")) {
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().qnStatusBarInset()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -103,8 +107,10 @@ fun ListDetailScreen(
                         color = palette.textTertiary,
                     )
                 }
-                ProgressRing(progress = state.progress, color = palette.accent, modifier = Modifier.size(34.dp))
-                Spacer(Modifier.width(12.dp))
+                if (state.items.isNotEmpty()) {
+                    ProgressRing(progress = state.progress, color = palette.accent, modifier = Modifier.size(34.dp))
+                    Spacer(Modifier.width(12.dp))
+                }
             }
 
             LazyColumn(
@@ -122,6 +128,7 @@ fun ListDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(62.dp)
+                            .clip(RoundedCornerShape(14.dp))
                             .graphicsLayer {
                                 translationY = if (isDragging) dragOffset else 0f
                                 scaleX = if (isDragging) 1.03f else 1f
@@ -208,7 +215,7 @@ fun ListDetailScreen(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().qnNavBarInset().imePadding().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextField(
