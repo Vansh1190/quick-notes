@@ -34,6 +34,28 @@ Room + FTS5, WorkManager.
   springy press physics, yellow-on-black accent by default, full dark mode, reduce-motion
   switch, onboarding.
 
+## Tech stack
+
+| Layer | Choice | Version |
+|---|---|---|
+| Language | Kotlin (JVM 17) | 2.3.21 |
+| Build | AGP + KSP, version catalog (`gradle/libs.versions.toml`) | AGP 9.4.1 / KSP 2.3.12 |
+| UI | Jetpack Compose (BOM) + custom design system on M3 foundations, Navigation Compose | BOM 2026.09.00 / Nav 2.10.2 |
+| Architecture | Single activity, MVVM + UDF, Coroutines/Flow, Lifecycle | 2.11.0 |
+| DI | Hilt (+ hilt-navigation-compose, hilt-work) | 2.60.1 / 1.4.0 |
+| Database | Room (KSP, exported schemas, migrations) + raw-SQL FTS5 search index | 2.7.2 |
+| Preferences | DataStore Preferences | 1.2.1 |
+| Background | WorkManager (`HiltWorkerFactory`, on-demand init), mic foreground service | 2.12.0 |
+| Serialization | kotlinx.serialization JSON (block payloads, backups, AI messages) | 1.9.0 |
+| Widgets | Glance AppWidget | 1.1.1 |
+| Camera | CameraX (core, camera2, lifecycle, view) | 1.6.2 |
+| OCR | ML Kit on-device text recognition | 16.0.1 |
+| Images | Coil 3 Compose | 3.6.3 |
+| AI client | Hand-rolled OpenAI-compatible HTTP client (`HttpsURLConnection`, no Retrofit) | — |
+| Secrets | Android Keystore AES-GCM (`SecretStore`) | — |
+| Voice | `AudioRecord` chunked PCM → `MediaCodec` AAC/M4A; on-device `SpeechRecognizer` STT | — |
+| Testing | JUnit 4, Robolectric, Room migration tests, Compose UI tests, coroutines-test | Robolectric 4.17 |
+
 ## Build
 
 Requirements: JDK 17, Android SDK 37 (compileSdk 37 / targetSdk 36 / minSdk 26).
